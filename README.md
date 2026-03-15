@@ -35,6 +35,62 @@ Zync is the workspace for this new workflow:
 - **Review & merge** — Built-in diff viewer to inspect what each agent changed, then merge the best results back to your main branch
 - **Any agent, any model** — Works with Claude Code, OpenAI Codex, Aider, Goose, or any CLI-based AI coding tool
 - **Permission control** — Choose per workspace: let the AI run freely, or require your approval for every action
+- **Diff caching** — Intelligent fingerprint-based caching for instant tab switching
+
+## Zync vs Traditional IDEs
+
+| | VS Code / PyCharm | Zync |
+|---|---|---|
+| **Who writes code** | You | AI agents |
+| **Your role** | Programmer | Project manager |
+| **Parallel work** | One editor at a time | 10+ agents in parallel |
+| **Isolation** | Manual branching | Automatic git worktrees |
+| **Code review** | External tools (GitHub) | Built-in diff viewer |
+| **Agent support** | Extensions/plugins | Native, any CLI agent |
+
+> **Note:** Zync and VS Code are complementary, not competing. Use VS Code for writing LaTeX, debugging, and plugins. Use Zync for orchestrating multiple AI agents. Zync has an "Open in IDE" button to jump into VS Code for any workspace.
+
+## Workflow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  1. Add Project    Point Zync to any git repository     │
+│         ↓                                               │
+│  2. Create         Each workspace gets its own branch   │
+│     Workspaces     and isolated working directory       │
+│         ↓                                               │
+│  3. Run AI         Claude Code, Codex, Aider, or any    │
+│     Agents         CLI tool runs in parallel             │
+│         ↓                                               │
+│  4. Review         Built-in diff viewer shows what       │
+│     Changes        each agent modified                   │
+│         ↓                                               │
+│  5. Merge          Merge the best solution back to main  │
+│         ↓                                               │
+│  6. Push           Upload merged result to GitHub        │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Interface Layout
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Z  Zync                              + Add Tool  ⚙  ▶ │
+├──────────┬──────────────────────────┬───────────────────┤
+│          │  Tabs:                   │                   │
+│ Projects │  [Workspace] [Explorer]  │  Branch: feature  │
+│          │  [Diff] [Claude CLI]     │                   │
+│ ├ Task 1 │                          │  CHANGES          │
+│ ├ Task 2 │   AI Agent Terminal      │  +3 -1 (2 files)  │
+│ └ Task 3 │   or Diff Viewer         │                   │
+│          │   or File Explorer       │  ACTIONS           │
+│ + New    │                          │  Fetch | Commit   │
+│          │                          │  Pull  | Push     │
+│          │                          │  Rebase | Merge   │
+├──────────┴──────────────────────────┤                   │
+│  ▸ TERMINAL  │  Claude  │  Codex    │  HISTORY          │
+└─────────────────────────────────────┴───────────────────┘
+```
 
 ## Quick Start
 
@@ -69,7 +125,11 @@ npx electron .
 
 **Windows one-click launcher:**
 
-Copy `start.bat.example` to `start.bat`, edit your settings, then double-click to launch.
+Copy `start.bat.example` to `start.bat`, edit your settings, then double-click to launch. You can create a desktop shortcut with the Zync icon by running:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File create-shortcut.ps1
+```
 
 ### Build for production
 
@@ -79,46 +139,54 @@ pnpm run build:mac         # macOS
 pnpm run build:linux       # Linux
 ```
 
-## How It Works
+## Features
 
-```
-┌─────────────────────────────────────────────────────┐
-│                      Zync                           │
-├──────────┬──────────────────────────┬───────────────┤
-│          │  Tabs: Explorer│Diff│CLI │               │
-│ Projects │                          │  Git Actions  │
-│          │   AI Agent Terminal      │  Pull / Push  │
-│ ├ Task 1 │   (Claude Code, etc.)    │  Merge / etc  │
-│ ├ Task 2 │                          │               │
-│ └ Task 3 │   Each task runs in an   │  History      │
-│          │   isolated git worktree  │  (commits)    │
-│ + New    │                          │               │
-├──────────┴──────────────────────────┴───────────────┤
-│  Terminal  │  Claude  │  Codex                      │
-└─────────────────────────────────────────────────────┘
-```
+### Git Worktree Isolation
 
-1. **Add a project** — Point Zync to any git repository
-2. **Create workspaces** — Each workspace gets its own branch and working directory
-3. **Run AI agents** — Claude Code, Codex, or any CLI tool runs in isolation
-4. **Review & merge** — Inspect diffs, then merge the best solution back to main
+Each workspace automatically creates an isolated git worktree — a full working copy of your project on its own branch. Multiple AI agents can work simultaneously without interfering with each other. When you're done, merge the best result back to main.
 
-## Zync vs Traditional IDEs
+### Permission Control
 
-| | VS Code / PyCharm | Zync |
-|---|---|---|
-| **Who writes code** | You | AI agents |
-| **Your role** | Programmer | Project manager |
-| **Parallel work** | One editor at a time | 10+ agents in parallel |
-| **Isolation** | Manual branching | Automatic git worktrees |
-| **Code review** | External tools (GitHub) | Built-in diff viewer |
-| **Agent support** | Extensions/plugins | Native, any CLI agent |
+Choose per workspace how much freedom to give the AI:
+
+| Mode | Behavior |
+|------|----------|
+| **Fast & Flexible** | AI executes all operations automatically. Best for trusted development workflows. |
+| **Secure & Controlled** | AI asks for your approval before running commands or modifying files. Safer for production code. |
+
+### Built-in Diff Viewer
+
+Syntax-highlighted diff viewer shows exactly what each AI agent changed. Compare against the main branch, review individual commits, and decide whether to merge. Cached with fingerprint-based invalidation for instant tab switching.
+
+### Git Operations
+
+Full git workflow available from the right sidebar:
+
+| Action | Description |
+|--------|-------------|
+| **Fetch** | Check for remote updates |
+| **Commit** | Save a version snapshot |
+| **Pull** | Download latest from remote |
+| **Push** | Upload your changes to remote |
+| **Stash / Pop** | Temporarily save / restore uncommitted changes |
+| **Rebase from main** | Sync latest changes from main branch |
+| **Merge to main** | Apply changes to the main branch |
+
+### Multi-Agent Support
+
+Run any CLI-based AI coding agent:
+
+- **Claude Code** (Anthropic) — Native integration with statusline support
+- **OpenAI Codex** — Built-in terminal preset
+- **Aider** — Add via custom command
+- **Goose** — Add via custom command
+- Any other CLI tool
 
 ## Configuration
 
 ### Smart Workspace Naming (Optional)
 
-Zync can use AI to auto-name workspaces. Set in `start.bat`:
+Zync can use AI to auto-name workspaces based on your prompts. Configure via OpenRouter in `start.bat`:
 
 ```bat
 set OPENAI_API_KEY=your-openrouter-key
@@ -126,7 +194,7 @@ set OPENAI_BASE_URL=https://openrouter.ai/api/v1
 set OPENAI_MODEL=anthropic/claude-haiku-4-5
 ```
 
-Compatible with any OpenRouter model.
+Compatible with any OpenRouter model (DeepSeek, GPT-4o, Claude, etc.).
 
 ### Settings
 
@@ -135,9 +203,11 @@ Access via gear icon or `Ctrl + ,`:
 | Setting | Description |
 |---------|-------------|
 | **Theme** | Light / Dark / OLED |
+| **UI Scale** | 0.8x to 1.5x zoom |
 | **Terminal Shell** | Git Bash (recommended) / PowerShell / CMD |
-| **Security Mode** | Fast & Flexible (auto-approve) or Secure & Controlled (manual approval) |
+| **Security Mode** | Fast & Flexible or Secure & Controlled |
 | **Custom Claude Path** | Use your own Claude Code installation |
+| **Notifications** | Desktop alerts when agents finish or need input |
 
 ## Keyboard Shortcuts
 
@@ -149,42 +219,52 @@ Access via gear icon or `Ctrl + ,`:
 | `Ctrl + ,` | Settings |
 | `Ctrl + B` | Toggle sidebar |
 | `Ctrl + Enter` | Send input to AI |
+| `Ctrl + Shift + 1` | Open Terminal panel |
+| `Ctrl + Shift + 2` | Open Explorer panel |
+| `Ctrl + Shift + 3` | Open Claude CLI |
+| `Ctrl + Shift + 4` | Open Codex CLI |
 | `F12` | Developer tools |
 
 ## Platform Support
 
-- **Windows** — Full support with native permission IPC (named pipes)
-- **macOS** — Full support
-- **Linux** — Full support (deb, AppImage)
+| Platform | Status | Notes |
+|----------|--------|-------|
+| **Windows** | Full support | Native permission IPC via named pipes |
+| **macOS** | Full support | Universal binary (Intel + Apple Silicon) |
+| **Linux** | Full support | deb and AppImage packages |
 
 ## Changelog
 
 ### v1.0.0 (2026-03-15)
 
-**Core Improvements:**
-- Rebranded as Zync with new logo and identity
-- Windows Permission IPC server using named pipes (Unix sockets don't work on Windows)
-- Security mode (approve/ignore) now works correctly across all code paths
-- Permission mode selector added to workspace creation dialog
+**Core:**
+- Windows Permission IPC server using named pipes
+- Security mode (approve/ignore) works correctly across all code paths
+- Permission mode selector in workspace creation dialog
 - Permanent delete for archived workspaces
-- Uses global Claude Code installation instead of bundled version (statusline support)
-- Removed session ID injection — Claude Code manages its own sessions natively
+- Uses global Claude Code installation (statusline support)
+- Claude Code manages its own sessions natively
+- Diff caching with fingerprint-based invalidation
 
-**UX Enhancements:**
-- Git action descriptions added (Fetch, Stash, Rebase, Merge, etc.)
-- "New Pane" → "New Workspace" terminology unification
-- Settings dropdown no longer closes the dialog when selecting options
-- DevTools toggle button in toolbar (bug icon) instead of auto-opening
-- Chinese path support (git core.quotepath=false, LANG=zh_CN.UTF-8)
+**UX:**
+- Git action descriptions (Fetch, Stash, Rebase, Merge, etc.)
+- "New Workspace" terminology unification
+- Settings dropdowns no longer close the dialog
+- DevTools toggle button in toolbar
+- Chinese path support
 - OpenRouter support for smart workspace naming
-- Comprehensive Chinese user guide (GUIDE_CN.md)
+- Chinese user guide (GUIDE_CN.md)
 
-**Bug Fixes:**
-- Modal overflow-hidden clipping dropdown menus
-- Permission mode not being passed from creation dialog to Claude CLI
+**Fixes:**
+- Modal overflow clipping dropdown menus
+- Permission mode not passed from creation dialog to CLI
 - Delete button missing from archived workspaces
-- PTY terminal type corrected from xterm-color to xterm-256color
-- node_modules/.bin removed from terminal PATH to prevent using wrong Claude version
+- PTY terminal type corrected to xterm-256color
+- Global Claude Code used instead of bundled version
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
