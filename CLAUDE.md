@@ -211,6 +211,20 @@ All core features have been successfully implemented with significant enhancemen
 └─────────────────────────────────────────────────────────┘
 ```
 
+## Zync-Specific Implementation Notes
+
+### Key Differences from Original Pane
+- Database panel table is `tool_panels` (NOT `panels`) — permanentlyDeleteSession uses this
+- Windows Permission IPC uses named pipes (`\\.\pipe\pane-permissions-{pid}`) instead of Unix sockets
+- PTY terminal name is `xterm-256color` (not `xterm-color`)
+- PATH in PTY excludes `node_modules` entries so global Claude Code is used
+- Session ID injection removed — Claude Code manages its own sessions natively
+- Config stored at `~/.pane/` (directory name kept for backward compatibility)
+- Dropdown component uses `createPortal` to `document.body` — Modal must detect portal clicks via `z-[10000]` class
+- Diff results cached with SHA-1 fingerprint (HEAD hash + git status), invalidated on commit/revert/restore or after 60s
+- Smart workspace naming supports OpenRouter via `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL` env vars
+- Frontend changes auto-reload via Vite; backend changes in `main/src/` require `pnpm run build:main` + restart
+
 ## Critical Implementation Details
 
 ### Modular Architecture (Refactored)
