@@ -5,388 +5,246 @@
 <h1 align="center">Zync</h1>
 
 <p align="center">
-  <strong>The IDE for AI Agents</strong> — Orchestrate Claude Code, Codex, Aider, and more in parallel.
+  <strong>The IDE for AI Agents</strong><br/>
+  Run multiple Claude Code, Codex, or Aider sessions in parallel — each in its own isolated git worktree.
 </p>
 
 <p align="center">
-  <a href="https://github.com/24kchengYe/Zync/stargazers"><img src="https://img.shields.io/github/stars/24kchengYe/Zync?style=for-the-badge&logo=github&logoColor=white&labelColor=0d1117&color=3B82F6" alt="Stars" /></a>
-  <a href="https://github.com/24kchengYe/Zync/network/members"><img src="https://img.shields.io/github/forks/24kchengYe/Zync?style=for-the-badge&logo=github&logoColor=white&labelColor=0d1117&color=1E40AF" alt="Forks" /></a>
-  <a href="https://github.com/24kchengYe/Zync/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge&labelColor=0d1117&color=60A5FA" alt="License" /></a>
-  <a href="https://github.com/24kchengYe/Zync/releases"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=for-the-badge&labelColor=0d1117&color=93C5FD" alt="Platform" /></a>
+  <a href="https://github.com/24kchengYe/Zync/releases"><img src="https://img.shields.io/github/v/release/24kchengYe/Zync?style=flat-square&labelColor=0d1117&color=3B82F6" alt="Release" /></a>
+  <a href="https://github.com/24kchengYe/Zync/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square&labelColor=0d1117&color=60A5FA" alt="License" /></a>
+  <a href="https://github.com/24kchengYe/Zync/stargazers"><img src="https://img.shields.io/github/stars/24kchengYe/Zync?style=flat-square&logo=github&logoColor=white&labelColor=0d1117&color=3B82F6" alt="Stars" /></a>
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square&labelColor=0d1117&color=93C5FD" alt="Platform" />
 </p>
 
 <p align="center">
-  While VS Code and PyCharm are built for humans who write code,<br/>
-  <strong>Zync is built for humans who manage AI agents that write code.</strong>
+  <a href="#quick-start">Quick Start</a> · <a href="#features">Features</a> · <a href="GUIDE_CN.md">中文指南</a> · <a href="#contributing">Contributing</a>
+</p>
+
+---
+
+<p align="center">
+  <img src="screenshots/screenshot-run.png" alt="Zync — Claude Code running in parallel sessions" width="800" />
 </p>
 
 <p align="center">
-  <strong>If Zync helps your workflow, please consider giving it a <a href="https://github.com/24kchengYe/Zync/stargazers">Star</a>!</strong>
-</p>
-
-## The Problem
-
-If you've tried running AI coding agents in VS Code or a regular terminal, you've hit these walls:
-
-**1. One agent at a time.** You give Claude Code a task, then sit and wait. Want to try a different approach? You have to stop the first one, lose its context, and start over. You can't easily compare two solutions side by side.
-
-**2. Agents step on each other's toes.** Open two terminals and run two agents on the same project — they both edit the same files, create merge conflicts, and break each other's work. You spend more time untangling the mess than reviewing the code.
-
-**3. No easy way to review and roll back.** Your agent made 47 file changes. Which ones are good? Which ones broke something? In a terminal, you're running `git diff` manually. In VS Code, the source control panel wasn't designed for reviewing AI-generated bulk changes across branches.
-
-**4. Branching is manual and tedious.** The proper way to isolate parallel work is git worktrees — but creating, managing, and cleaning them up by hand is painful. Most people don't bother, and end up with agents fighting over the same working directory.
-
-**5. No unified view.** With multiple agents across multiple terminals, you're alt-tabbing constantly. There's no single dashboard showing "Agent A is done, Agent B is still running, Agent C needs input."
-
-## How Zync Solves This
-
-Zync handles all of the above automatically:
-
-- **Parallel execution** — Run 10+ AI agents simultaneously, each working on a different task
-- **Automatic isolation** — Every agent gets its own git worktree. No conflicts, no mess
-- **Built-in diff viewer** — See exactly what each agent changed, with syntax highlighting
-- **One-click merge** — Happy with an agent's work? Merge it back to main. Not happy? Archive it
-- **Any agent, any model** — Claude Code, Codex, Aider, Goose, or any CLI tool
-- **Permission control** — Auto-approve everything, or review each action manually
-- **Notifications** — Get alerted when an agent finishes or needs your input
-
-## Zync vs Traditional IDEs
-
-| | VS Code / PyCharm | Zync |
-|---|---|---|
-| **Who writes code** | You | AI agents |
-| **Your role** | Programmer | Project manager |
-| **Parallel work** | One terminal at a time | 10+ agents in parallel |
-| **Isolation** | Manual branching | Automatic git worktrees |
-| **Code review** | `git diff` or GitHub PR | Built-in diff viewer |
-| **Agent support** | Extensions/plugins | Native, any CLI agent |
-| **Workspace management** | You manage branches | Automatic lifecycle |
-
-> **Zync and VS Code are complementary, not competing.** Use VS Code for writing LaTeX, debugging, and its plugin ecosystem. Use Zync when you want to throw multiple AI agents at a problem and pick the best result. Zync has an "Open in IDE" button to jump into VS Code for any workspace.
-
-## Workflow
-
-<p align="center">
-  <img src="docs/diagrams/workflow.svg" alt="Zync Workflow" width="850" />
-</p>
-
-<details>
-<summary>中文工作流程图 / Chinese Workflow Diagram</summary>
-<p align="center">
-  <img src="docs/diagrams/workflow-zh.svg" alt="Zync 工作流程" width="850" />
-</p>
-</details>
-
-### Git Worktree Isolation
-
-<p align="center">
-  <img src="docs/diagrams/worktree.svg" alt="Git Worktree Isolation" width="850" />
-</p>
-
-<details>
-<summary>中文 Worktree 隔离图 / Chinese Worktree Diagram</summary>
-<p align="center">
-  <img src="docs/diagrams/worktree-zh.svg" alt="Git Worktree 隔离机制" width="850" />
-</p>
-</details>
-
-### Interface Layout
-
-<p align="center">
-  <img src="docs/diagrams/panels.svg" alt="Zync Panel System" width="850" />
-</p>
-
-<details>
-<summary>中文面板系统图 / Chinese Panel System Diagram</summary>
-<p align="center">
-  <img src="docs/diagrams/panels-zh.svg" alt="Zync 面板系统" width="850" />
-</p>
-</details>
-
-## Architecture
-
-<p align="center">
-  <img src="docs/diagrams/architecture.svg" alt="Zync Architecture" width="850" />
-</p>
-
-<details>
-<summary>中文架构图 / Chinese Architecture Diagram</summary>
-<p align="center">
-  <img src="docs/diagrams/architecture-zh.svg" alt="Zync 架构图" width="850" />
-</p>
-</details>
-
-## Screenshots
-
-<p align="center">
-  <strong>Claude Code running in Zync</strong><br/>
-  <img src="screenshots/screenshot-run.png" alt="Zync main interface with Claude Code" width="800" />
+  <em>Three Claude Code agents working on different tasks simultaneously, each in its own worktree.</em>
 </p>
 
 <p align="center">
-  <strong>Built-in Diff Viewer</strong><br/>
-  <img src="screenshots/screenshot-diff.png" alt="Zync diff viewer" width="800" />
+  <img src="screenshots/screenshot-diff.png" alt="Built-in diff viewer" width="800" />
 </p>
 
 <p align="center">
-  <strong>Create Workspace with Security Mode</strong><br/>
-  <img src="screenshots/screenshot-create.png" alt="Zync create workspace dialog" width="500" />
+  <em>Review what each agent changed before merging back to main.</em>
 </p>
+
+## Why Zync?
+
+You open a terminal, start Claude Code, give it a task, and... wait. You want to try a different approach at the same time? Now you need a second terminal, a second branch, and the discipline to keep them from editing the same files. By the third agent, you're drowning in tabs and merge conflicts.
+
+**Zync fixes this.** Every session gets its own git worktree automatically. You see all your agents in one sidebar — who's running, who's done, who needs input. When an agent finishes, you review the diff and merge with one click. No manual branching. No conflicts. No alt-tabbing.
+
+<table>
+<tr>
+<td width="50%">
+
+**Without Zync**
+- One agent at a time, or messy conflicts
+- Manual `git worktree add` / cleanup
+- Alt-tabbing between terminals
+- Running `git diff` by hand to review changes
+- No idea which agent needs your attention
+
+</td>
+<td width="50%">
+
+**With Zync**
+- 10+ agents working in parallel
+- Automatic worktree isolation per session
+- Single dashboard for all agents
+- Built-in syntax-highlighted diff viewer
+- Notifications when agents finish or need input
+
+</td>
+</tr>
+</table>
 
 ## Quick Start
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) >= 22.14.0
-- [pnpm](https://pnpm.io/) >= 8.0.0
-- [Git](https://git-scm.com/)
-- At least one AI agent installed:
-  - Claude Code: `npm install -g @anthropic-ai/claude-code`
-  - Codex: `npm install -g @openai/codex`
-  - Aider: `pip install aider-chat`
+- [Node.js](https://nodejs.org/) >= 22.14.0, [pnpm](https://pnpm.io/) >= 8, [Git](https://git-scm.com/)
+- At least one AI agent: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), or [Aider](https://aider.chat/)
 
-### Install & Run
+### Install & Launch
 
 ```bash
 git clone https://github.com/24kchengYe/Zync.git
 cd Zync
-pnpm install
-pnpm run setup
+pnpm install && pnpm run setup
 ```
 
-**Start (two terminals):**
+**Option A — One-click (Windows):**
+
+Copy `start.bat.example` to `start.bat`, edit your settings, double-click to launch.
+
+**Option B — Manual (all platforms):**
 
 ```bash
-# Terminal 1 — frontend
+# Terminal 1: start frontend
 pnpm run --filter frontend dev
 
-# Terminal 2 — app (after frontend shows "ready")
+# Terminal 2: start app (after frontend shows "ready")
 npx electron .
 ```
 
-**Windows one-click launcher:**
-
-Copy `start.bat.example` to `start.bat`, edit your settings, then double-click to launch. You can create a desktop shortcut with the Zync icon by running:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File create-shortcut.ps1
-```
-
-### Build for production
+### Build Installers
 
 ```bash
 pnpm run build:win:x64    # Windows
-pnpm run build:mac         # macOS
-pnpm run build:linux       # Linux
+pnpm run build:mac         # macOS (universal)
+pnpm run build:linux       # Linux (deb + AppImage)
 ```
 
 ## Features
 
-### Git Worktree Isolation
+<table>
+<tr>
+<td width="50%" valign="top">
 
-Each workspace automatically creates an isolated git worktree — a full working copy of your project on its own branch. Multiple AI agents can work simultaneously without interfering with each other. When you're done, merge the best result back to main.
+### Parallel Agent Sessions
+Run Claude Code, Codex, Aider, Goose, or any CLI tool — multiple instances at once. Each gets its own git worktree so agents never conflict.
 
-### Permission Control
-
-Choose per workspace how much freedom to give the AI:
-
-| Mode | Behavior |
-|------|----------|
-| **Fast & Flexible** | AI executes all operations automatically. Best for trusted development workflows. |
-| **Secure & Controlled** | AI asks for your approval before running commands or modifying files. Safer for production code. |
+</td>
+<td width="50%" valign="top">
 
 ### Built-in Diff Viewer
+See exactly what each agent changed with syntax highlighting. Compare against main, review commits, and decide what to keep.
 
-Syntax-highlighted diff viewer shows exactly what each AI agent changed. Compare against the main branch, review individual commits, and decide whether to merge. Cached with fingerprint-based invalidation for instant tab switching.
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
 
-### Git Operations
+### Permission Control
+**Fast & Flexible** — auto-approve everything for trusted workflows.<br/>
+**Secure & Controlled** — review each action before it runs.
 
-Full git workflow available from the right sidebar:
+</td>
+<td width="50%" valign="top">
 
-| Action | Description |
-|--------|-------------|
-| **Fetch** | Check for remote updates |
-| **Commit** | Save a version snapshot |
-| **Pull** | Download latest from remote |
-| **Push** | Upload your changes to remote |
-| **Stash / Pop** | Temporarily save / restore uncommitted changes |
-| **Rebase from main** | Sync latest changes from main branch |
-| **Merge to main** | Apply changes to the main branch |
+### Full Git Workflow
+Fetch, commit, pull, push, stash, rebase from main, merge to main — all from the sidebar. No terminal needed.
 
-### Multi-Agent Support
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
 
-Run any CLI-based AI coding agent:
+### Smart Notifications
+Desktop alerts when an agent finishes, hits an error, or needs your input. Never miss a prompt again.
 
-- **Claude Code** (Anthropic) — Native integration with statusline support
-- **OpenAI Codex** — Built-in terminal preset
-- **Aider** — Add via custom command
-- **Goose** — Add via custom command
-- Any other CLI tool
+</td>
+<td width="50%" valign="top">
+
+### Multi-Tool Support
+Native integration for Claude Code and Codex. Add Aider, Goose, or any CLI tool via custom commands.
+
+</td>
+</tr>
+</table>
+
+<p align="center">
+  <img src="screenshots/screenshot-create.png" alt="Create workspace dialog with permission mode" width="500" />
+</p>
+<p align="center"><em>Create a workspace: pick your agent, set permissions, write your prompt.</em></p>
+
+## How It Works
+
+```
+You create a session with a prompt
+         │
+         ▼
+Zync creates an isolated git worktree + branch
+         │
+         ▼
+AI agent runs in that worktree (no conflicts with other sessions)
+         │
+         ▼
+You review the diff, then merge to main or archive
+```
+
+<details>
+<summary>Architecture diagram</summary>
+<p align="center">
+  <img src="docs/diagrams/architecture.svg" alt="Zync Architecture" width="850" />
+</p>
+</details>
+
+<details>
+<summary>Workflow diagram</summary>
+<p align="center">
+  <img src="docs/diagrams/workflow.svg" alt="Zync Workflow" width="850" />
+</p>
+</details>
+
+<details>
+<summary>Worktree isolation diagram</summary>
+<p align="center">
+  <img src="docs/diagrams/worktree.svg" alt="Git Worktree Isolation" width="850" />
+</p>
+</details>
+
+<details>
+<summary>Panel system diagram</summary>
+<p align="center">
+  <img src="docs/diagrams/panels.svg" alt="Zync Panel System" width="850" />
+</p>
+</details>
 
 ## Configuration
 
-### Smart Workspace Naming (Optional)
+**Smart workspace naming** — Zync can auto-name sessions using AI. Set these in `start.bat` or your environment:
 
-Zync can use AI to auto-name workspaces based on your prompts. Configure via OpenRouter in `start.bat`:
-
-```bat
-set OPENAI_API_KEY=your-openrouter-key
-set OPENAI_BASE_URL=https://openrouter.ai/api/v1
-set OPENAI_MODEL=anthropic/claude-haiku-4-5
+```bash
+OPENAI_API_KEY=your-openrouter-key
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+OPENAI_MODEL=anthropic/claude-haiku-4-5
 ```
 
-Compatible with any OpenRouter model (DeepSeek, GPT-4o, Claude, etc.).
+**Settings** (`Ctrl + ,`): Theme (Light/Dark/OLED), UI scale, terminal shell, security mode, custom Claude path, notification preferences.
 
-### Settings
-
-Access via gear icon or `Ctrl + ,`:
-
-| Setting | Description |
-|---------|-------------|
-| **Theme** | Light / Dark / OLED |
-| **UI Scale** | 0.8x to 1.5x zoom |
-| **Terminal Shell** | Git Bash (recommended) / PowerShell / CMD |
-| **Security Mode** | Fast & Flexible or Secure & Controlled |
-| **Custom Claude Path** | Use your own Claude Code installation |
-| **Notifications** | Desktop alerts when agents finish or need input |
-
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl + K` | Command palette |
-| `Ctrl + N` | New workspace |
-| `Ctrl + Shift + N` | New project |
-| `Ctrl + ,` | Settings |
-| `Ctrl + B` | Toggle sidebar |
-| `Ctrl + Enter` | Send input to AI |
-| `Ctrl + Shift + 1` | Open Terminal panel |
-| `Ctrl + Shift + 2` | Open Explorer panel |
-| `Ctrl + Shift + 3` | Open Claude CLI |
-| `Ctrl + Shift + 4` | Open Codex CLI |
-| `F12` | Developer tools |
-
-## Platform Support
-
-| Platform | Status | Notes |
-|----------|--------|-------|
-| **Windows** | Full support | Native permission IPC via named pipes |
-| **macOS** | Full support | Universal binary (Intel + Apple Silicon) |
-| **Linux** | Full support | deb and AppImage packages |
-
-## Changelog
-
-### v1.0.0 (2026-03-15)
-
-**Core:**
-- Windows Permission IPC server using named pipes
-- Security mode (approve/ignore) works correctly across all code paths
-- Permission mode selector in workspace creation dialog
-- Permanent delete for archived workspaces
-- Uses global Claude Code installation (statusline support)
-- Claude Code manages its own sessions natively
-- Diff caching with fingerprint-based invalidation
-
-**UX:**
-- Git action descriptions (Fetch, Stash, Rebase, Merge, etc.)
-- "New Workspace" terminology unification
-- Settings dropdowns no longer close the dialog
-- DevTools toggle button in toolbar
-- Chinese path support
-- OpenRouter support for smart workspace naming
-- Chinese user guide (GUIDE_CN.md)
-
-**Fixes:**
-- Modal overflow clipping dropdown menus
-- Permission mode not passed from creation dialog to CLI
-- Delete button missing from archived workspaces
-- PTY terminal type corrected to xterm-256color
-- Global Claude Code used instead of bundled version
+**Keyboard shortcuts**: `Ctrl+K` command palette, `Ctrl+N` new workspace, `Ctrl+B` toggle sidebar, `Ctrl+Enter` send to AI. Full list in the app's Help dialog (`?` button).
 
 ## Known Limitations
 
-Zync is purpose-built for AI agent orchestration. It intentionally does **not** try to replace your IDE:
+Zync orchestrates AI agents. It does not replace your IDE.
 
-- **No code editor** — Zync has a basic file explorer, but for serious editing you should use VS Code, PyCharm, or your preferred editor. Click "Open in IDE" to jump there.
-- **No debugging tools** — Breakpoints, variable inspection, etc. live in your IDE.
-- **No plugin ecosystem** — VS Code has extensions for every language and framework. Zync focuses on the agent workflow layer.
-- **No syntax intelligence** — No autocomplete, linting, or language server. The AI agents handle that in their own context.
+- **No code editor** — use VS Code or PyCharm for editing. Zync has an "Open in IDE" button for every workspace.
+- **No debugger, no LSP, no plugins** — those live in your IDE. Zync focuses on the agent workflow layer.
 
-These are deliberate design choices, not missing features. Zync does one thing well: orchestrating AI agents.
+These are intentional. Zync does one thing well.
 
-## Roadmap & Contributing
+## Contributing
 
-We'd love help making Zync better. Here are areas where contributions are especially welcome:
+We'd love help. Some areas where contributions are especially welcome:
 
-- [ ] Auto-rename workspaces based on AI's actual work content
-- [ ] Performance optimization for large projects (Explorer, Diff)
-- [ ] Plugin system for custom agent integrations
-- [ ] Workspace templates (pre-configured agent + prompt combos)
-- [ ] Session statistics dashboard (tokens used, time spent, etc.)
-- [ ] Conflict resolution UI for merge failures
-- [ ] i18n / localization support
+- Performance optimization for large projects (Explorer, Diff)
+- Plugin system for custom agent integrations
+- Workspace templates (pre-configured agent + prompt combos)
+- Session statistics dashboard (tokens, time, cost)
+- i18n / localization support
 
-Have an idea or found a bug? [Open an issue](https://github.com/24kchengYe/Zync/issues) — feature requests, bug reports, and PRs are all welcome.
+Found a bug or have an idea? [Open an issue](https://github.com/24kchengYe/Zync/issues). PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
+## Documentation
 
-## 中文简介
-
-<details>
-<summary>点击展开中文介绍 / Click to expand Chinese introduction</summary>
-
-### Zync — AI 智能体的 IDE
-
-当 VS Code 和 PyCharm 是为写代码的人类构建的，**Zync 是为管理写代码的 AI 智能体的人类构建的。**
-
-### 核心问题
-
-- **一次只能跑一个智能体** — 想同时尝试多种方案？传统终端做不到
-- **智能体互相冲突** — 多个 AI 编辑同一文件，产生合并冲突
-- **难以审查变更** — AI 修改了 47 个文件，好坏难辨
-- **分支管理繁琐** — 手动创建 git worktree 痛苦且易出错
-
-### Zync 的解决方案
-
-| 功能 | 说明 |
-|------|------|
-| **并行执行** | 同时运行 10+ 个 AI 智能体 |
-| **自动隔离** | 每个智能体有独立的 git worktree |
-| **差异查看器** | 语法高亮显示每个智能体的修改 |
-| **一键合并** | 满意就合并，不满意就归档 |
-| **多智能体支持** | Claude Code、Codex、Aider 或任何 CLI 工具 |
-| **权限控制** | 自动执行或逐步审批 |
-
-### 快速开始
-
-```bash
-git clone https://github.com/24kchengYe/Zync.git
-cd Zync
-pnpm install
-pnpm run setup
-```
-
-**启动（两个终端）：**
-
-```bash
-# 终端 1 — 前端
-pnpm run --filter frontend dev
-
-# 终端 2 — 应用（前端启动后）
-npx electron .
-```
-
-### 平台支持
-
-| 平台 | 状态 | 说明 |
-|------|------|------|
-| **Windows** | 完全支持 | 通过命名管道实现权限 IPC |
-| **macOS** | 完全支持 | 通用二进制（Intel + Apple Silicon） |
-| **Linux** | 完全支持 | deb 和 AppImage 安装包 |
-
-更多信息请参阅 [中文使用指南](GUIDE_CN.md)。
-
-</details>
+- [中文使用指南 / Chinese Guide](GUIDE_CN.md)
+- [Adding New CLI Tools](docs/ADDING_NEW_CLI_TOOLS.md)
+- [Implementing New CLI Agents](docs/IMPLEMENTING_NEW_CLI_AGENTS.md)
+- [Building on Windows](docs/BUILDING_ON_WINDOWS.md)
+- [Setup Troubleshooting](docs/troubleshooting/SETUP_TROUBLESHOOTING.md)
+- [Database Schema](docs/DATABASE_DOCUMENTATION.md)
 
 ## License
 
