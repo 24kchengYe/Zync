@@ -1,5 +1,6 @@
 import { IpcMain } from 'electron';
 import { mkdir } from 'fs/promises';
+import path from 'path';
 import type { AppServices } from './types';
 import type { CreateProjectRequest, UpdateProjectRequest } from '../../../frontend/src/types/project';
 import { scriptExecutionTracker } from '../services/scriptExecutionTracker';
@@ -114,13 +115,19 @@ export function registerProjectHandlers(ipcMain: IpcMain, services: AppServices)
       await mkdir(pathResolver.toFileSystem(actualPath), { recursive: true });
       console.log('[Main] Ensured project directory exists');
 
-      // Check if it's a git repository
+      // Check if it's a git repository (use fs to avoid cmd.exe encoding issues with Chinese paths)
+      const fsPath = pathResolver.toFileSystem(actualPath);
+      const gitDirPath = path.join(fsPath, '.git');
       try {
-        commandRunner.exec('git rev-parse --is-inside-work-tree', actualPath, { silent: true });
-        isGitRepo = true;
-        console.log('[Main] Directory is already a git repository');
+        const stat = await import('fs').then(fs => fs.existsSync(gitDirPath));
+        if (stat) {
+          isGitRepo = true;
+          console.log('[Main] Directory is already a git repository (.git found)');
+        } else {
+          console.log('[Main] Directory is not a git repository, initializing...');
+        }
       } catch {
-        console.log('[Main] Directory is not a git repository, initializing...');
+        console.log('[Main] Could not check git status, will try initializing...');
       }
 
       // Initialize git if needed
@@ -133,8 +140,31 @@ export function registerProjectHandlers(ipcMain: IpcMain, services: AppServices)
           commandRunner.exec(`git checkout -b ${branchName}`, actualPath);
           console.log(`[Main] Created and checked out branch: ${branchName}`);
 
-          // Add all existing files so worktrees will have them
-          commandRunner.exec('git add -A', actualPath);
+          // Create default .gitignore for research projects (skip large data/model files)
+          const gitignorePath = path.join(fsPath, '.gitignore');
+          const fs = await import('fs');
+          if (!fs.existsSync(gitignorePath)) {
+            fs.writeFileSync(gitignorePath, [
+              '# Data files',
+              '*.csv', '*.xlsx', '*.parquet', '*.feather', '*.sqlite', '*.db',
+              '# Model weights',
+              '*.pth', '*.pt', '*.h5', '*.pkl', '*.onnx', '*.safetensors',
+              '# GIS / Remote sensing',
+              '*.tif', '*.tiff', '*.shp', '*.dbf', '*.shx', '*.prj', '*.gpkg', '*.img', '*.hdf', '*.nc',
+              '# Large binary files',
+              '*.npy', '*.npz', '*.zip', '*.tar', '*.gz', '*.7z', '*.rar',
+              '# Cache & IDE',
+              '__pycache__/', '.venv/', 'node_modules/', '.ipynb_checkpoints/',
+              '.idea/', '.vscode/', '*.swp',
+              '# System',
+              '.DS_Store', 'Thumbs.db',
+              ''
+            ].join('\n'), 'utf-8');
+            console.log('[Main] Created default .gitignore for research project');
+          }
+
+          // Add all existing files (with .gitignore filtering) so worktrees will have them
+          commandRunner.exec('git add -A', actualPath, { maxBuffer: 50 * 1024 * 1024 });
           commandRunner.exec('git commit -m "Initial commit" --allow-empty', actualPath, { env: GIT_ATTRIBUTION_ENV });
           console.log('[Main] Created initial commit with existing files');
         } catch (error) {
