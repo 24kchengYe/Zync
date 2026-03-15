@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" width="900" height="400">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f1923;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#0a1218;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="sidebarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2a3a;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#15222f;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#162436;stop-opacity:0.8"/>
+      <stop offset="100%" style="stop-color:#111d2b;stop-opacity:0.8"/>
+    </linearGradient>
+    <linearGradient id="rightGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2a3a;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#15222f;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="tabActiveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a5f;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#15293f;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="tabInactiveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#162436;stop-opacity:0.5"/>
+      <stop offset="100%" style="stop-color:#111d2b;stop-opacity:0.5"/>
+    </linearGradient>
+    <linearGradient id="itemGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a5f;stop-opacity:0.6"/>
+      <stop offset="100%" style="stop-color:#15293f;stop-opacity:0.6"/>
+    </linearGradient>
+    <linearGradient id="toolbarGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1a3050;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#1e3a5f;stop-opacity:0.9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="400" fill="url(#bgGrad)" rx="8"/>
+
+  <!-- Title -->
+  <text x="450" y="30" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="600">Zync 面板系统</text>
+  <text x="450" y="47" text-anchor="middle" fill="#64748B" font-family="system-ui, -apple-system, sans-serif" font-size="11">界面布局与组件结构</text>
+
+  <!-- Window frame -->
+  <rect x="30" y="58" width="840" height="315" rx="8" fill="none" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  <!-- Title bar -->
+  <rect x="30" y="58" width="840" height="26" rx="8" fill="url(#toolbarGrad)" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.3"/>
+  <rect x="30" y="74" width="840" height="10" fill="url(#toolbarGrad)"/>
+  <circle cx="48" cy="71" r="5" fill="#EF4444" fill-opacity="0.6"/>
+  <circle cx="64" cy="71" r="5" fill="#FBBF24" fill-opacity="0.6"/>
+  <circle cx="80" cy="71" r="5" fill="#22C55E" fill-opacity="0.6"/>
+  <text x="450" y="75" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="10">Zync — 我的项目</text>
+  <text x="775" y="75" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="9">+ 添加工具</text>
+  <text x="845" y="75" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="9">设置</text>
+
+  <!-- Sidebar -->
+  <rect x="30" y="84" width="155" height="289" fill="url(#sidebarGrad)" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.2"/>
+
+  <!-- Sidebar: Project -->
+  <text x="45" y="102" fill="#93C5FD" font-family="system-ui, sans-serif" font-size="10" font-weight="600">项目</text>
+  <rect x="38" y="108" width="140" height="20" rx="3" fill="url(#itemGrad)" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.3"/>
+  <text x="50" y="122" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="9">我的项目</text>
+
+  <!-- Sidebar: Workspaces -->
+  <text x="45" y="148" fill="#93C5FD" font-family="system-ui, sans-serif" font-size="10" font-weight="600">工作区</text>
+  <rect x="38" y="154" width="140" height="20" rx="3" fill="#3B82F6" fill-opacity="0.15" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.4"/>
+  <circle cx="49" cy="164" r="4" fill="#22C55E" fill-opacity="0.8"/>
+  <text x="58" y="168" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="9">添加认证系统</text>
+  <rect x="38" y="178" width="140" height="20" rx="3" fill="url(#itemGrad)" stroke="#3B82F6" stroke-width="0.3" stroke-opacity="0.2"/>
+  <circle cx="49" cy="188" r="4" fill="#FBBF24" fill-opacity="0.8"/>
+  <text x="58" y="192" fill="#CBD5E1" font-family="system-ui, sans-serif" font-size="9">重构数据库层</text>
+  <rect x="38" y="202" width="140" height="20" rx="3" fill="url(#itemGrad)" stroke="#3B82F6" stroke-width="0.3" stroke-opacity="0.2"/>
+  <circle cx="49" cy="212" r="4" fill="#60A5FA" fill-opacity="0.8"/>
+  <text x="58" y="216" fill="#CBD5E1" font-family="system-ui, sans-serif" font-size="9">修复登录问题</text>
+  <rect x="38" y="226" width="140" height="20" rx="3" fill="url(#itemGrad)" stroke="#3B82F6" stroke-width="0.3" stroke-opacity="0.2"/>
+  <circle cx="49" cy="236" r="4" fill="#475569" fill-opacity="0.8"/>
+  <text x="58" y="240" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">编写单元测试</text>
+
+  <rect x="38" y="258" width="140" height="22" rx="4" fill="#3B82F6" fill-opacity="0.1" stroke="#3B82F6" stroke-width="0.8" stroke-opacity="0.3"/>
+  <text x="108" y="273" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="9">+ 新建工作区</text>
+
+  <!-- Status legend -->
+  <text x="50" y="300" fill="#475569" font-family="system-ui, sans-serif" font-size="8">运行中  等待中  完成  已停止</text>
+  <circle cx="44" cy="297" r="3" fill="#22C55E" fill-opacity="0.7"/>
+  <circle cx="78" cy="297" r="3" fill="#FBBF24" fill-opacity="0.7"/>
+  <circle cx="107" cy="297" r="3" fill="#60A5FA" fill-opacity="0.7"/>
+  <circle cx="133" cy="297" r="3" fill="#475569" fill-opacity="0.7"/>
+
+  <!-- Main content area -->
+  <rect x="185" y="84" width="475" height="289" fill="url(#mainGrad)" stroke="#3B82F6" stroke-width="0.3" stroke-opacity="0.15"/>
+
+  <!-- Main tabs -->
+  <rect x="185" y="84" width="80" height="24" rx="0" fill="url(#tabActiveGrad)" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.4"/>
+  <text x="225" y="100" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="9" font-weight="500">工作区</text>
+  <line x1="185" y1="108" x2="265" y2="108" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.7"/>
+
+  <rect x="265" y="84" width="80" height="24" rx="0" fill="url(#tabInactiveGrad)"/>
+  <text x="305" y="100" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">文件浏览</text>
+
+  <rect x="345" y="84" width="65" height="24" rx="0" fill="url(#tabInactiveGrad)"/>
+  <text x="377" y="100" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">差异对比</text>
+
+  <rect x="410" y="84" width="80" height="24" rx="0" fill="url(#tabInactiveGrad)"/>
+  <text x="450" y="100" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">Claude CLI</text>
+
+  <rect x="490" y="84" width="60" height="24" rx="0" fill="url(#tabInactiveGrad)"/>
+  <text x="520" y="100" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">日志</text>
+
+  <rect x="550" y="84" width="70" height="24" rx="0" fill="url(#tabInactiveGrad)"/>
+  <text x="585" y="100" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">编辑器</text>
+
+  <!-- Main content: terminal output -->
+  <text x="200" y="128" fill="#22C55E" font-family="monospace" font-size="9" opacity="0.8">$ claude --dangerously-skip-permissions</text>
+  <text x="200" y="144" fill="#64748B" font-family="monospace" font-size="9">正在分析项目结构...</text>
+  <text x="200" y="160" fill="#64748B" font-family="monospace" font-size="9">读取 src/auth/login.ts</text>
+  <text x="200" y="176" fill="#64748B" font-family="monospace" font-size="9">读取 src/auth/register.ts</text>
+  <text x="200" y="192" fill="#93C5FD" font-family="monospace" font-size="9">创建 src/auth/middleware.ts</text>
+  <text x="200" y="208" fill="#93C5FD" font-family="monospace" font-size="9">更新 src/routes/index.ts</text>
+  <text x="200" y="224" fill="#22C55E" font-family="monospace" font-size="9">已添加 JWT 认证中间件</text>
+  <text x="200" y="240" fill="#22C55E" font-family="monospace" font-size="9">已更新 4 个路由处理器</text>
+  <text x="200" y="260" fill="#FBBF24" font-family="monospace" font-size="9">等待输入...</text>
+
+  <!-- Input area -->
+  <rect x="195" y="270" width="455" height="30" rx="4" fill="#0f1923" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.3"/>
+  <text x="205" y="289" fill="#475569" font-family="system-ui, sans-serif" font-size="9">输入消息... (Ctrl+Enter 发送)</text>
+
+  <!-- Tool panel tabs -->
+  <rect x="185" y="305" width="475" height="24" fill="url(#toolbarGrad)" stroke="#3B82F6" stroke-width="0.3" stroke-opacity="0.2"/>
+  <rect x="190" y="308" width="65" height="18" rx="3" fill="#3B82F6" fill-opacity="0.2" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.4"/>
+  <text x="222" y="321" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="8" font-weight="500">终端</text>
+  <rect x="260" y="308" width="60" height="18" rx="3" fill="url(#tabInactiveGrad)"/>
+  <text x="290" y="321" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="8">Claude</text>
+  <rect x="325" y="308" width="55" height="18" rx="3" fill="url(#tabInactiveGrad)"/>
+  <text x="352" y="321" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="8">Codex</text>
+  <rect x="385" y="308" width="60" height="18" rx="3" fill="url(#tabInactiveGrad)"/>
+  <text x="415" y="321" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="8">Shell 2</text>
+  <text x="460" y="321" fill="#475569" font-family="system-ui, sans-serif" font-size="8">+</text>
+
+  <!-- Tool panel content -->
+  <rect x="185" y="329" width="475" height="44" fill="#0a1218" stroke="#3B82F6" stroke-width="0.3" stroke-opacity="0.15"/>
+  <text x="200" y="345" fill="#22C55E" font-family="monospace" font-size="8" opacity="0.7">user@pc ~/project (zync/session-a) $</text>
+  <text x="200" y="360" fill="#64748B" font-family="monospace" font-size="8">npm test -- --coverage</text>
+
+  <!-- Right panel -->
+  <rect x="660" y="84" width="210" height="289" fill="url(#rightGrad)" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.2"/>
+
+  <!-- Branch info -->
+  <text x="675" y="102" fill="#93C5FD" font-family="system-ui, sans-serif" font-size="10" font-weight="600">分支</text>
+  <rect x="668" y="108" width="195" height="22" rx="4" fill="url(#itemGrad)" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.2"/>
+  <text x="765" y="123" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="9">zync/session-a-auth</text>
+
+  <!-- Changes -->
+  <text x="675" y="150" fill="#93C5FD" font-family="system-ui, sans-serif" font-size="10" font-weight="600">变更</text>
+  <text x="675" y="166" fill="#22C55E" font-family="system-ui, sans-serif" font-size="9">+87 新增</text>
+  <text x="740" y="166" fill="#EF4444" font-family="system-ui, sans-serif" font-size="9">-12 删除</text>
+  <text x="675" y="180" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">6 个文件已修改</text>
+
+  <!-- Actions -->
+  <text x="675" y="202" fill="#93C5FD" font-family="system-ui, sans-serif" font-size="10" font-weight="600">操作</text>
+
+  <rect x="668" y="208" width="93" height="22" rx="4" fill="url(#itemGrad)" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.25"/>
+  <text x="714" y="223" text-anchor="middle" fill="#CBD5E1" font-family="system-ui, sans-serif" font-size="8">拉取远程</text>
+  <rect x="770" y="208" width="93" height="22" rx="4" fill="url(#itemGrad)" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.25"/>
+  <text x="816" y="223" text-anchor="middle" fill="#CBD5E1" font-family="system-ui, sans-serif" font-size="8">提交</text>
+
+  <rect x="668" y="234" width="93" height="22" rx="4" fill="url(#itemGrad)" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.25"/>
+  <text x="714" y="249" text-anchor="middle" fill="#CBD5E1" font-family="system-ui, sans-serif" font-size="8">拉取</text>
+  <rect x="770" y="234" width="93" height="22" rx="4" fill="url(#itemGrad)" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.25"/>
+  <text x="816" y="249" text-anchor="middle" fill="#CBD5E1" font-family="system-ui, sans-serif" font-size="8">推送</text>
+
+  <rect x="668" y="260" width="93" height="22" rx="4" fill="url(#itemGrad)" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.25"/>
+  <text x="714" y="275" text-anchor="middle" fill="#CBD5E1" font-family="system-ui, sans-serif" font-size="8">变基</text>
+  <rect x="770" y="260" width="93" height="22" rx="4" fill="#22C55E" fill-opacity="0.15" stroke="#22C55E" stroke-width="0.8" stroke-opacity="0.4"/>
+  <text x="816" y="275" text-anchor="middle" fill="#22C55E" font-family="system-ui, sans-serif" font-size="8" font-weight="500">合并</text>
+
+  <!-- History -->
+  <text x="675" y="300" fill="#93C5FD" font-family="system-ui, sans-serif" font-size="10" font-weight="600">提交历史</text>
+  <text x="675" y="315" fill="#64748B" font-family="system-ui, sans-serif" font-size="8">a3f21c4  添加 JWT 中间件</text>
+  <text x="675" y="328" fill="#64748B" font-family="system-ui, sans-serif" font-size="8">b7e9012  更新路由处理器</text>
+  <text x="675" y="341" fill="#64748B" font-family="system-ui, sans-serif" font-size="8">c1d5678  添加认证配置</text>
+
+  <!-- Labels -->
+  <text x="108" y="360" text-anchor="middle" fill="#3B82F6" font-family="system-ui, sans-serif" font-size="9" opacity="0.5">侧边栏</text>
+  <text x="422" y="385" text-anchor="middle" fill="#3B82F6" font-family="system-ui, sans-serif" font-size="9" opacity="0.5">主区域 + 工具面板</text>
+  <text x="765" y="360" text-anchor="middle" fill="#3B82F6" font-family="system-ui, sans-serif" font-size="9" opacity="0.5">Git 操作面板</text>
+
+  <!-- Footer -->
+  <text x="450" y="396" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="9">github.com/24kchengYe/Zync</text>
+</svg>

@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" width="900" height="400">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f1923;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#0a1218;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="stepGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a5f;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#15293f;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="activeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a5f;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#162d4a;stop-opacity:0.9"/>
+    </linearGradient>
+    <marker id="arrowRight" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#3B82F6" opacity="0.8"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="400" fill="url(#bgGrad)" rx="8"/>
+
+  <!-- Title -->
+  <text x="450" y="35" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="600">Zync 工作流程</text>
+  <text x="450" y="52" text-anchor="middle" fill="#64748B" font-family="system-ui, -apple-system, sans-serif" font-size="11">从项目配置到代码合并，6 步完成</text>
+
+  <!-- Outer container -->
+  <rect x="30" y="65" width="840" height="280" rx="10" fill="none" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  <!-- Step 1 -->
+  <rect x="50" y="100" width="115" height="100" rx="8" fill="url(#stepGrad)" stroke="#3B82F6" stroke-width="1" stroke-opacity="0.4"/>
+  <circle cx="107" cy="130" r="16" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.5"/>
+  <text x="107" y="135" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="14" font-weight="600">1</text>
+  <text x="107" y="160" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">添加项目</text>
+  <text x="107" y="176" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">指向任意</text>
+  <text x="107" y="188" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">Git 仓库</text>
+
+  <line x1="165" y1="150" x2="185" y2="150" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.6" marker-end="url(#arrowRight)"/>
+
+  <!-- Step 2 -->
+  <rect x="190" y="100" width="115" height="100" rx="8" fill="url(#stepGrad)" stroke="#3B82F6" stroke-width="1" stroke-opacity="0.4"/>
+  <circle cx="247" cy="130" r="16" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.5"/>
+  <text x="247" y="135" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="14" font-weight="600">2</text>
+  <text x="247" y="160" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">创建工作区</text>
+  <text x="247" y="176" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">隔离的</text>
+  <text x="247" y="188" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">Worktree 分支</text>
+
+  <line x1="305" y1="150" x2="325" y2="150" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.6" marker-end="url(#arrowRight)"/>
+
+  <!-- Step 3 -->
+  <rect x="330" y="100" width="115" height="100" rx="8" fill="url(#activeGrad)" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.6"/>
+  <circle cx="387" cy="130" r="16" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.5"/>
+  <text x="387" y="135" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="14" font-weight="600">3</text>
+  <text x="387" y="160" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">AI 智能体</text>
+  <text x="387" y="174" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">并行工作</text>
+  <text x="387" y="190" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">多个同时运行</text>
+
+  <line x1="445" y1="150" x2="465" y2="150" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.6" marker-end="url(#arrowRight)"/>
+
+  <!-- Step 4 -->
+  <rect x="470" y="100" width="115" height="100" rx="8" fill="url(#stepGrad)" stroke="#3B82F6" stroke-width="1" stroke-opacity="0.4"/>
+  <circle cx="527" cy="130" r="16" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.5"/>
+  <text x="527" y="135" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="14" font-weight="600">4</text>
+  <text x="527" y="160" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">审查变更</text>
+  <text x="527" y="176" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">语法高亮</text>
+  <text x="527" y="188" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">差异查看器</text>
+
+  <line x1="585" y1="150" x2="605" y2="150" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.6" marker-end="url(#arrowRight)"/>
+
+  <!-- Step 5 -->
+  <rect x="610" y="100" width="115" height="100" rx="8" fill="url(#stepGrad)" stroke="#3B82F6" stroke-width="1" stroke-opacity="0.4"/>
+  <circle cx="667" cy="130" r="16" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.5"/>
+  <text x="667" y="135" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="14" font-weight="600">5</text>
+  <text x="667" y="160" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">合并到主干</text>
+  <text x="667" y="176" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">一键合并</text>
+  <text x="667" y="188" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">最佳方案</text>
+
+  <line x1="725" y1="150" x2="745" y2="150" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.6" marker-end="url(#arrowRight)"/>
+
+  <!-- Step 6 -->
+  <rect x="750" y="100" width="105" height="100" rx="8" fill="url(#stepGrad)" stroke="#3B82F6" stroke-width="1" stroke-opacity="0.4"/>
+  <circle cx="802" cy="130" r="16" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.5"/>
+  <text x="802" y="135" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="14" font-weight="600">6</text>
+  <text x="802" y="160" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">推送</text>
+  <text x="802" y="176" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">上传至</text>
+  <text x="802" y="188" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">GitHub</text>
+
+  <!-- Description bar -->
+  <rect x="50" y="230" width="805" height="45" rx="6" fill="#3B82F6" fill-opacity="0.1" stroke="#3B82F6" stroke-width="0.8" stroke-opacity="0.3"/>
+  <text x="452" y="250" text-anchor="middle" fill="#93C5FD" font-family="system-ui, sans-serif" font-size="11" font-weight="500">多个 AI 智能体并行运行 — 每个都有独立隔离的 Worktree 分支</text>
+  <text x="452" y="265" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">并排比较结果，合并最佳方案，归档其余</text>
+
+  <!-- Phase indicator -->
+  <rect x="50" y="290" width="805" height="40" rx="6" fill="none" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.2"/>
+  <text x="107" y="314" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="9">初始化</text>
+  <text x="317" y="314" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="9">并行执行区域</text>
+  <line x1="180" y1="290" x2="180" y2="330" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.2"/>
+  <line x1="455" y1="290" x2="455" y2="330" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.2"/>
+  <text x="590" y="314" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="9">审查</text>
+  <line x1="725" y1="290" x2="725" y2="330" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.2"/>
+  <text x="802" y="314" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="9">发布</text>
+
+  <!-- Footer -->
+  <text x="450" y="370" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="9">Zync — AI 智能体的 IDE</text>
+  <text x="450" y="385" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="9">github.com/24kchengYe/Zync</text>
+</svg>
