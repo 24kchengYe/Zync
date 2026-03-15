@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" width="900" height="400">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f1923;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#0a1218;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="mainBranchGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1a3352;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#1e3a5f;stop-opacity:0.9"/>
+    </linearGradient>
+    <linearGradient id="worktreeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a5f;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#15293f;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="isolationGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#162436;stop-opacity:0.6"/>
+      <stop offset="100%" style="stop-color:#111d2b;stop-opacity:0.6"/>
+    </linearGradient>
+    <marker id="arrowDown" markerWidth="8" markerHeight="6" refX="4" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#3B82F6" opacity="0.8"/>
+    </marker>
+    <marker id="arrowUp" markerWidth="8" markerHeight="6" refX="4" refY="3" orient="270">
+      <polygon points="0,0 8,3 0,6" fill="#22C55E" opacity="0.8"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="400" fill="url(#bgGrad)" rx="8"/>
+
+  <!-- Title -->
+  <text x="450" y="35" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="600">Git Worktree Isolation</text>
+  <text x="450" y="52" text-anchor="middle" fill="#64748B" font-family="system-ui, -apple-system, sans-serif" font-size="11">Each AI agent works in its own isolated branch — no conflicts</text>
+
+  <!-- Outer container -->
+  <rect x="30" y="65" width="840" height="290" rx="10" fill="none" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  <!-- Main Branch bar -->
+  <rect x="50" y="80" width="800" height="45" rx="8" fill="url(#mainBranchGrad)" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.5"/>
+  <circle cx="80" cy="102" r="10" fill="#3B82F6" fill-opacity="0.3" stroke="#3B82F6" stroke-width="1"/>
+  <text x="80" y="106" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="9" font-weight="600">M</text>
+  <text x="130" y="100" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="13" font-weight="600">main</text>
+  <text x="130" y="115" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">Production branch — stays clean and stable</text>
+  <!-- Commit dots on main -->
+  <circle cx="550" cy="102" r="4" fill="#3B82F6" fill-opacity="0.5"/>
+  <circle cx="580" cy="102" r="4" fill="#3B82F6" fill-opacity="0.5"/>
+  <circle cx="610" cy="102" r="4" fill="#3B82F6" fill-opacity="0.5"/>
+  <circle cx="640" cy="102" r="4" fill="#3B82F6" fill-opacity="0.6"/>
+  <circle cx="670" cy="102" r="4" fill="#3B82F6" fill-opacity="0.7"/>
+  <line x1="554" y1="102" x2="666" y2="102" stroke="#3B82F6" stroke-width="1" stroke-opacity="0.3"/>
+  <!-- Merge indicator -->
+  <text x="790" y="107" text-anchor="middle" fill="#22C55E" font-family="system-ui, sans-serif" font-size="9" opacity="0.7">merge</text>
+
+  <!-- Branch arrows down -->
+  <line x1="200" y1="125" x2="200" y2="148" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.5" marker-end="url(#arrowDown)"/>
+  <line x1="450" y1="125" x2="450" y2="148" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.5" marker-end="url(#arrowDown)"/>
+  <line x1="700" y1="125" x2="700" y2="148" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.5" marker-end="url(#arrowDown)"/>
+
+  <text x="200" y="142" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="8">fork</text>
+  <text x="450" y="142" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="8">fork</text>
+  <text x="700" y="142" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="8">fork</text>
+
+  <!-- Worktree A -->
+  <rect x="65" y="155" width="250" height="140" rx="8" fill="url(#isolationGrad)" stroke="#3B82F6" stroke-width="0.8" stroke-opacity="0.25" stroke-dasharray="4,3"/>
+  <text x="85" y="173" fill="#3B82F6" font-family="system-ui, sans-serif" font-size="9" opacity="0.6">Isolated Worktree</text>
+  <rect x="80" y="180" width="220" height="55" rx="6" fill="url(#worktreeGrad)" stroke="#3B82F6" stroke-width="0.8" stroke-opacity="0.4"/>
+  <text x="190" y="200" text-anchor="middle" fill="#93C5FD" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Agent A — Claude Code</text>
+  <text x="190" y="218" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">branch: zync/session-a-feature</text>
+  <text x="190" y="246" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="9">+142 -38  (12 files)</text>
+  <rect x="130" y="255" width="120" height="22" rx="4" fill="#22C55E" fill-opacity="0.1" stroke="#22C55E" stroke-width="0.8" stroke-opacity="0.3"/>
+  <text x="190" y="270" text-anchor="middle" fill="#22C55E" font-family="system-ui, sans-serif" font-size="9">Ready to merge</text>
+
+  <!-- Worktree B -->
+  <rect x="325" y="155" width="250" height="140" rx="8" fill="url(#isolationGrad)" stroke="#3B82F6" stroke-width="0.8" stroke-opacity="0.25" stroke-dasharray="4,3"/>
+  <text x="345" y="173" fill="#3B82F6" font-family="system-ui, sans-serif" font-size="9" opacity="0.6">Isolated Worktree</text>
+  <rect x="340" y="180" width="220" height="55" rx="6" fill="url(#worktreeGrad)" stroke="#3B82F6" stroke-width="0.8" stroke-opacity="0.4"/>
+  <text x="450" y="200" text-anchor="middle" fill="#93C5FD" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Agent B — Codex</text>
+  <text x="450" y="218" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">branch: zync/session-b-refactor</text>
+  <text x="450" y="246" text-anchor="middle" fill="#FBBF24" font-family="system-ui, sans-serif" font-size="9">Running... 47% complete</text>
+  <rect x="370" y="255" width="160" height="22" rx="4" fill="#FBBF24" fill-opacity="0.1" stroke="#FBBF24" stroke-width="0.8" stroke-opacity="0.3"/>
+  <rect x="370" y="255" width="75" height="22" rx="4" fill="#FBBF24" fill-opacity="0.15"/>
+  <text x="450" y="270" text-anchor="middle" fill="#FBBF24" font-family="system-ui, sans-serif" font-size="9">In progress</text>
+
+  <!-- Worktree C -->
+  <rect x="585" y="155" width="250" height="140" rx="8" fill="url(#isolationGrad)" stroke="#3B82F6" stroke-width="0.8" stroke-opacity="0.25" stroke-dasharray="4,3"/>
+  <text x="605" y="173" fill="#3B82F6" font-family="system-ui, sans-serif" font-size="9" opacity="0.6">Isolated Worktree</text>
+  <rect x="600" y="180" width="220" height="55" rx="6" fill="url(#worktreeGrad)" stroke="#3B82F6" stroke-width="0.8" stroke-opacity="0.4"/>
+  <text x="710" y="200" text-anchor="middle" fill="#93C5FD" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Agent C — Aider</text>
+  <text x="710" y="218" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">branch: zync/session-c-bugfix</text>
+  <text x="710" y="246" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="9">+23 -7  (3 files)</text>
+  <rect x="650" y="255" width="120" height="22" rx="4" fill="#60A5FA" fill-opacity="0.1" stroke="#60A5FA" stroke-width="0.8" stroke-opacity="0.3"/>
+  <text x="710" y="270" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="9">Reviewing</text>
+
+  <!-- Merge arrows back up -->
+  <line x1="190" y1="280" x2="190" y2="305" stroke="#22C55E" stroke-width="1.2" stroke-opacity="0.5" stroke-dasharray="4,2"/>
+  <line x1="190" y1="305" x2="670" y2="305" stroke="#22C55E" stroke-width="1.2" stroke-opacity="0.5" stroke-dasharray="4,2"/>
+  <line x1="670" y1="305" x2="670" y2="125" stroke="#22C55E" stroke-width="1.2" stroke-opacity="0.5" stroke-dasharray="4,2" marker-end="url(#arrowUp)"/>
+  <text x="430" y="320" text-anchor="middle" fill="#22C55E" font-family="system-ui, sans-serif" font-size="9" opacity="0.7">squash + rebase to main</text>
+
+  <!-- Footer -->
+  <text x="450" y="370" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="9">Each agent gets a full copy of the project — changes never conflict</text>
+  <text x="450" y="385" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="9">github.com/24kchengYe/Zync</text>
+</svg>

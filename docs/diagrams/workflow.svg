@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" width="900" height="400">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f1923;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#0a1218;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="stepGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a5f;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#15293f;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="activeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a5f;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#162d4a;stop-opacity:0.9"/>
+    </linearGradient>
+    <marker id="arrowRight" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#3B82F6" opacity="0.8"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="400" fill="url(#bgGrad)" rx="8"/>
+
+  <!-- Title -->
+  <text x="450" y="35" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="600">Zync Workflow</text>
+  <text x="450" y="52" text-anchor="middle" fill="#64748B" font-family="system-ui, -apple-system, sans-serif" font-size="11">From project setup to merged code in 6 steps</text>
+
+  <!-- Outer container -->
+  <rect x="30" y="65" width="840" height="280" rx="10" fill="none" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  <!-- Step 1: Add Project -->
+  <rect x="50" y="100" width="115" height="100" rx="8" fill="url(#stepGrad)" stroke="#3B82F6" stroke-width="1" stroke-opacity="0.4"/>
+  <circle cx="107" cy="130" r="16" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.5"/>
+  <text x="107" y="135" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="14" font-weight="600">1</text>
+  <text x="107" y="160" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Add Project</text>
+  <text x="107" y="176" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">Point to any</text>
+  <text x="107" y="188" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">git repository</text>
+
+  <!-- Arrow 1→2 -->
+  <line x1="165" y1="150" x2="185" y2="150" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.6" marker-end="url(#arrowRight)"/>
+
+  <!-- Step 2: Create Workspace -->
+  <rect x="190" y="100" width="115" height="100" rx="8" fill="url(#stepGrad)" stroke="#3B82F6" stroke-width="1" stroke-opacity="0.4"/>
+  <circle cx="247" cy="130" r="16" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.5"/>
+  <text x="247" y="135" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="14" font-weight="600">2</text>
+  <text x="247" y="160" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Create</text>
+  <text x="247" y="174" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Workspace</text>
+  <text x="247" y="190" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">Isolated worktree</text>
+
+  <!-- Arrow 2→3 -->
+  <line x1="305" y1="150" x2="325" y2="150" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.6" marker-end="url(#arrowRight)"/>
+
+  <!-- Step 3: AI Agent Works -->
+  <rect x="330" y="100" width="115" height="100" rx="8" fill="url(#activeGrad)" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.6"/>
+  <circle cx="387" cy="130" r="16" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.5"/>
+  <text x="387" y="135" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="14" font-weight="600">3</text>
+  <text x="387" y="160" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">AI Agent</text>
+  <text x="387" y="174" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Works</text>
+  <text x="387" y="190" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">Runs in parallel</text>
+
+  <!-- Arrow 3→4 -->
+  <line x1="445" y1="150" x2="465" y2="150" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.6" marker-end="url(#arrowRight)"/>
+
+  <!-- Step 4: Review Diff -->
+  <rect x="470" y="100" width="115" height="100" rx="8" fill="url(#stepGrad)" stroke="#3B82F6" stroke-width="1" stroke-opacity="0.4"/>
+  <circle cx="527" cy="130" r="16" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.5"/>
+  <text x="527" y="135" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="14" font-weight="600">4</text>
+  <text x="527" y="160" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Review Diff</text>
+  <text x="527" y="176" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">Syntax-highlighted</text>
+  <text x="527" y="188" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">change viewer</text>
+
+  <!-- Arrow 4→5 -->
+  <line x1="585" y1="150" x2="605" y2="150" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.6" marker-end="url(#arrowRight)"/>
+
+  <!-- Step 5: Merge to Main -->
+  <rect x="610" y="100" width="115" height="100" rx="8" fill="url(#stepGrad)" stroke="#3B82F6" stroke-width="1" stroke-opacity="0.4"/>
+  <circle cx="667" cy="130" r="16" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.5"/>
+  <text x="667" y="135" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="14" font-weight="600">5</text>
+  <text x="667" y="160" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Merge to</text>
+  <text x="667" y="174" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Main</text>
+  <text x="667" y="190" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">One-click merge</text>
+
+  <!-- Arrow 5→6 -->
+  <line x1="725" y1="150" x2="745" y2="150" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.6" marker-end="url(#arrowRight)"/>
+
+  <!-- Step 6: Push -->
+  <rect x="750" y="100" width="105" height="100" rx="8" fill="url(#stepGrad)" stroke="#3B82F6" stroke-width="1" stroke-opacity="0.4"/>
+  <circle cx="802" cy="130" r="16" fill="none" stroke="#3B82F6" stroke-width="1.2" stroke-opacity="0.5"/>
+  <text x="802" y="135" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="14" font-weight="600">6</text>
+  <text x="802" y="160" text-anchor="middle" fill="#E2E8F0" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Push</text>
+  <text x="802" y="176" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">Upload to</text>
+  <text x="802" y="188" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">GitHub</text>
+
+  <!-- Description bar at bottom -->
+  <rect x="50" y="230" width="805" height="45" rx="6" fill="#3B82F6" fill-opacity="0.1" stroke="#3B82F6" stroke-width="0.8" stroke-opacity="0.3"/>
+  <text x="452" y="250" text-anchor="middle" fill="#93C5FD" font-family="system-ui, sans-serif" font-size="11" font-weight="500">Run multiple agents in parallel — each gets its own isolated worktree branch</text>
+  <text x="452" y="265" text-anchor="middle" fill="#64748B" font-family="system-ui, sans-serif" font-size="9">Compare results side by side, merge the best solution, archive the rest</text>
+
+  <!-- Parallel indicator -->
+  <rect x="50" y="290" width="805" height="40" rx="6" fill="none" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.2"/>
+  <text x="107" y="314" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="9">Setup</text>
+  <text x="317" y="314" text-anchor="middle" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="9">Parallel Execution Zone</text>
+  <line x1="180" y1="290" x2="180" y2="330" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.2"/>
+  <line x1="455" y1="290" x2="455" y2="330" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.2"/>
+  <text x="590" y="314" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="9">Review</text>
+  <line x1="725" y1="290" x2="725" y2="330" stroke="#3B82F6" stroke-width="0.5" stroke-opacity="0.2"/>
+  <text x="802" y="314" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="9">Ship</text>
+
+  <!-- Footer -->
+  <text x="450" y="370" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="9">Zync — The IDE for AI Agents</text>
+  <text x="450" y="385" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="9">github.com/24kchengYe/Zync</text>
+</svg>

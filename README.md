@@ -66,45 +66,42 @@ Zync handles all of the above automatically:
 
 ## Workflow
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  1. Add Project    Point Zync to any git repository     │
-│         ↓                                               │
-│  2. Create         Each workspace gets its own branch   │
-│     Workspaces     and isolated working directory       │
-│         ↓                                               │
-│  3. Run AI         Claude Code, Codex, Aider, or any    │
-│     Agents         CLI tool runs in parallel             │
-│         ↓                                               │
-│  4. Review         Built-in diff viewer shows what       │
-│     Changes        each agent modified                   │
-│         ↓                                               │
-│  5. Merge          Merge the best solution back to main  │
-│         ↓                                               │
-│  6. Push           Upload merged result to GitHub        │
-└─────────────────────────────────────────────────────────┘
-```
+<p align="center">
+  <img src="docs/diagrams/workflow.svg" alt="Zync Workflow" width="850" />
+</p>
+
+<details>
+<summary>中文工作流程图 / Chinese Workflow Diagram</summary>
+<p align="center">
+  <img src="docs/diagrams/workflow-zh.svg" alt="Zync 工作流程" width="850" />
+</p>
+</details>
+
+### Git Worktree Isolation
+
+<p align="center">
+  <img src="docs/diagrams/worktree.svg" alt="Git Worktree Isolation" width="850" />
+</p>
+
+<details>
+<summary>中文 Worktree 隔离图 / Chinese Worktree Diagram</summary>
+<p align="center">
+  <img src="docs/diagrams/worktree-zh.svg" alt="Git Worktree 隔离机制" width="850" />
+</p>
+</details>
 
 ### Interface Layout
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Z  Zync                              + Add Tool  ⚙  ▶ │
-├──────────┬──────────────────────────┬───────────────────┤
-│          │  Tabs:                   │                   │
-│ Projects │  [Workspace] [Explorer]  │  Branch: feature  │
-│          │  [Diff] [Claude CLI]     │                   │
-│ ├ Task 1 │                          │  CHANGES          │
-│ ├ Task 2 │   AI Agent Terminal      │  +3 -1 (2 files)  │
-│ └ Task 3 │   or Diff Viewer         │                   │
-│          │   or File Explorer       │  ACTIONS           │
-│ + New    │                          │  Fetch | Commit   │
-│          │                          │  Pull  | Push     │
-│          │                          │  Rebase | Merge   │
-├──────────┴──────────────────────────┤                   │
-│  ▸ TERMINAL  │  Claude  │  Codex    │  HISTORY          │
-└─────────────────────────────────────┴───────────────────┘
-```
+<p align="center">
+  <img src="docs/diagrams/panels.svg" alt="Zync Panel System" width="850" />
+</p>
+
+<details>
+<summary>中文面板系统图 / Chinese Panel System Diagram</summary>
+<p align="center">
+  <img src="docs/diagrams/panels-zh.svg" alt="Zync 面板系统" width="850" />
+</p>
+</details>
 
 ## Architecture
 
@@ -332,6 +329,64 @@ We'd love help making Zync better. Here are areas where contributions are especi
 Have an idea or found a bug? [Open an issue](https://github.com/24kchengYe/Zync/issues) — feature requests, bug reports, and PRs are all welcome.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
+
+## 中文简介
+
+<details>
+<summary>点击展开中文介绍 / Click to expand Chinese introduction</summary>
+
+### Zync — AI 智能体的 IDE
+
+当 VS Code 和 PyCharm 是为写代码的人类构建的，**Zync 是为管理写代码的 AI 智能体的人类构建的。**
+
+### 核心问题
+
+- **一次只能跑一个智能体** — 想同时尝试多种方案？传统终端做不到
+- **智能体互相冲突** — 多个 AI 编辑同一文件，产生合并冲突
+- **难以审查变更** — AI 修改了 47 个文件，好坏难辨
+- **分支管理繁琐** — 手动创建 git worktree 痛苦且易出错
+
+### Zync 的解决方案
+
+| 功能 | 说明 |
+|------|------|
+| **并行执行** | 同时运行 10+ 个 AI 智能体 |
+| **自动隔离** | 每个智能体有独立的 git worktree |
+| **差异查看器** | 语法高亮显示每个智能体的修改 |
+| **一键合并** | 满意就合并，不满意就归档 |
+| **多智能体支持** | Claude Code、Codex、Aider 或任何 CLI 工具 |
+| **权限控制** | 自动执行或逐步审批 |
+
+### 快速开始
+
+```bash
+git clone https://github.com/24kchengYe/Zync.git
+cd Zync
+pnpm install
+pnpm run setup
+```
+
+**启动（两个终端）：**
+
+```bash
+# 终端 1 — 前端
+pnpm run --filter frontend dev
+
+# 终端 2 — 应用（前端启动后）
+npx electron .
+```
+
+### 平台支持
+
+| 平台 | 状态 | 说明 |
+|------|------|------|
+| **Windows** | 完全支持 | 通过命名管道实现权限 IPC |
+| **macOS** | 完全支持 | 通用二进制（Intel + Apple Silicon） |
+| **Linux** | 完全支持 | deb 和 AppImage 安装包 |
+
+更多信息请参阅 [中文使用指南](GUIDE_CN.md)。
+
+</details>
 
 ## License
 
