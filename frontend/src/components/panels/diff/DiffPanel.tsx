@@ -21,6 +21,7 @@ export const DiffPanel: React.FC<DiffPanelProps> = ({
   const diffState = panel.state?.customState as DiffPanelState | undefined;
   const lastRefreshRef = useRef<number>(Date.now());
   const combinedDiffRef = useRef<CombinedDiffViewHandle>(null);
+  const lastFingerprintRef = useRef<string | null>(null);
 
   // Listen for file change events from other panels
   useEffect(() => {
@@ -50,14 +51,32 @@ export const DiffPanel: React.FC<DiffPanelProps> = ({
     };
   }, [panel.id, sessionId]);
 
-  // Mark stale when panel was inactive and becomes active (may have missed changes)
+  // When panel becomes active after being inactive, check fingerprint before marking stale
   const wasActiveRef = useRef(isActive);
   useEffect(() => {
     if (isActive && !wasActiveRef.current) {
-      setIsStale(true);
+      // Check if git state actually changed before triggering a refresh
+      (async () => {
+        try {
+          const result = await window.electron?.invoke('sessions:get-diff-fingerprint', sessionId);
+          if (result?.success && result.data?.fingerprint) {
+            const newFingerprint = result.data.fingerprint;
+            if (lastFingerprintRef.current === null || lastFingerprintRef.current !== newFingerprint) {
+              lastFingerprintRef.current = newFingerprint;
+              setIsStale(true);
+            }
+            // If fingerprint matches, skip refresh -- data hasn't changed
+          } else {
+            // Fallback: if fingerprint check fails, mark stale to be safe
+            setIsStale(true);
+          }
+        } catch {
+          setIsStale(true);
+        }
+      })();
     }
     wasActiveRef.current = isActive;
-  }, [isActive]);
+  }, [isActive, sessionId]);
 
   // Auto-refresh when becoming active and stale
   useEffect(() => {
@@ -67,6 +86,13 @@ export const DiffPanel: React.FC<DiffPanelProps> = ({
 
       const timer = setTimeout(() => {
         lastRefreshRef.current = Date.now();
+
+        // Update fingerprint after refresh so next activation can skip if unchanged
+        window.electron?.invoke('sessions:get-diff-fingerprint', sessionId).then((result: { success: boolean; data?: { fingerprint: string } } | undefined) => {
+          if (result?.success && result.data?.fingerprint) {
+            lastFingerprintRef.current = result.data.fingerprint;
+          }
+        }).catch(() => { /* best effort */ });
 
         window.electron?.invoke('panels:update', panel.id, {
           state: {
