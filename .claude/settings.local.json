@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__memomind__list_banks",
+      "Bash(cd:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

@@ -701,18 +701,81 @@ export function FileEditor({
     return ext === 'ipynb';
   }, [selectedFile]);
 
+  // Detect media file types for preview
+  const mediaFileType = useMemo((): 'image' | 'pdf' | 'video' | 'audio' | null => {
+    if (!selectedFile) return null;
+    const ext = selectedFile.path.split('.').pop()?.toLowerCase() || '';
+    if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'ico'].includes(ext)) return 'image';
+    if (ext === 'pdf') return 'pdf';
+    if (['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(ext)) return 'video';
+    if (['mp3', 'wav', 'flac', 'aac', 'm4a'].includes(ext)) return 'audio';
+    return null;
+  }, [selectedFile]);
+
+  // Data URL for media file preview
+  const [mediaDataUrl, setMediaDataUrl] = useState<string | null>(null);
+  const [mediaLoading, setMediaLoading] = useState(false);
+
   const loadFile = useCallback(async (file: FileItem | null) => {
     if (!file || file.isDirectory) return;
 
     setLoading(true);
     setError(null);
     setGitStatus('clean');
+    setMediaDataUrl(null);
+
+    // Check if this is a media file that needs binary loading
+    const ext = file.path.split('.').pop()?.toLowerCase() || '';
+    const isMediaExt = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'ico',
+      'pdf', 'mp4', 'webm', 'ogg', 'mov', 'avi',
+      'mp3', 'wav', 'flac', 'aac', 'm4a'].includes(ext);
+
+    if (isMediaExt) {
+      // Load binary file as base64 for media preview
+      setMediaLoading(true);
+      try {
+        const mimeMap: Record<string, string> = {
+          png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+          svg: 'image/svg+xml', webp: 'image/webp', bmp: 'image/bmp', ico: 'image/x-icon',
+          pdf: 'application/pdf',
+          mp4: 'video/mp4', webm: 'video/webm', ogg: 'video/ogg', mov: 'video/quicktime', avi: 'video/x-msvideo',
+          mp3: 'audio/mpeg', wav: 'audio/wav', flac: 'audio/flac', aac: 'audio/aac', m4a: 'audio/mp4',
+        };
+        const mime = mimeMap[ext] || 'application/octet-stream';
+
+        const result = await window.electronAPI.invoke('file:readBinary', {
+          sessionId,
+          filePath: file.path
+        });
+
+        if (result.success) {
+          setMediaDataUrl(`data:${mime};base64,${result.base64}`);
+          setFileContent('');
+          setOriginalContent('');
+          setSelectedFile(file);
+          setViewMode('preview');
+
+          if (onStateChange) {
+            onStateChange({ filePath: file.path, isDirty: false });
+          }
+        } else {
+          setError(result.error);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load media file');
+      } finally {
+        setMediaLoading(false);
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
       const result = await window.electronAPI.invoke('file:read', {
         sessionId,
         filePath: file.path
       });
-      
+
       if (result.success) {
         setFileContent(result.content);
         setOriginalContent(result.content);
@@ -1026,8 +1089,8 @@ export function FileEditor({
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {/* Preview Toggle for Markdown/Notebook Files */}
-                {(isMarkdownFile || isNotebookFile) && (
+                {/* Preview Toggle for Markdown/Notebook Files (not shown for media files) */}
+                {!mediaFileType && (isMarkdownFile || isNotebookFile) && (
                   <div className="flex items-center rounded-lg border border-border-primary bg-surface-tertiary">
                     <button
                       onClick={() => setViewMode('edit')}
@@ -1055,19 +1118,27 @@ export function FileEditor({
                     </button>
                   </div>
                 )}
-                <div className="flex items-center gap-2 text-sm">
-                  {hasUnsavedChanges ? (
-                    <>
-                      <div className="w-2 h-2 bg-status-warning rounded-full animate-pulse" />
-                      <span className="text-status-warning">Auto-saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-2 h-2 bg-status-success rounded-full" />
-                      <span className="text-status-success">All changes saved</span>
-                    </>
-                  )}
-                </div>
+                {mediaFileType && (
+                  <div className="flex items-center gap-1 text-xs text-text-tertiary">
+                    <Eye className="w-3 h-3" />
+                    <span>{mediaFileType.charAt(0).toUpperCase() + mediaFileType.slice(1)} Preview</span>
+                  </div>
+                )}
+                {!mediaFileType && (
+                  <div className="flex items-center gap-2 text-sm">
+                    {hasUnsavedChanges ? (
+                      <>
+                        <div className="w-2 h-2 bg-status-warning rounded-full animate-pulse" />
+                        <span className="text-status-warning">Auto-saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-2 h-2 bg-status-success rounded-full" />
+                        <span className="text-status-success">All changes saved</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             {error && (
@@ -1076,7 +1147,50 @@ export function FileEditor({
               </div>
             )}
             <div className="flex-1 overflow-hidden">
-              {viewMode === 'preview' && isMarkdownFile ? (
+              {mediaFileType && mediaDataUrl ? (
+                <div className="h-full overflow-auto bg-bg-primary flex items-center justify-center p-4">
+                  {mediaFileType === 'image' && (
+                    <img
+                      src={mediaDataUrl}
+                      alt={selectedFile.name}
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  )}
+                  {mediaFileType === 'pdf' && (
+                    <iframe
+                      src={mediaDataUrl}
+                      title={selectedFile.name}
+                      className="w-full h-full border-0"
+                    />
+                  )}
+                  {mediaFileType === 'video' && (
+                    <video
+                      src={mediaDataUrl}
+                      controls
+                      className="max-w-full max-h-full"
+                    >
+                      Your browser does not support video playback.
+                    </video>
+                  )}
+                  {mediaFileType === 'audio' && (
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="text-4xl text-text-tertiary">&#9835;</div>
+                      <span className="text-sm text-text-secondary">{selectedFile.name}</span>
+                      <audio
+                        src={mediaDataUrl}
+                        controls
+                        className="w-80"
+                      >
+                        Your browser does not support audio playback.
+                      </audio>
+                    </div>
+                  )}
+                </div>
+              ) : mediaFileType && mediaLoading ? (
+                <div className="h-full flex items-center justify-center text-text-secondary">
+                  Loading preview...
+                </div>
+              ) : viewMode === 'preview' && isMarkdownFile ? (
                 <div className="h-full overflow-auto bg-bg-primary">
                   <MarkdownPreview
                     content={fileContent}
