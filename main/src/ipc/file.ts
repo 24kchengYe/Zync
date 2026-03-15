@@ -2,7 +2,8 @@ import { IpcMain, shell } from 'electron';
 import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
 import * as path from 'path';
-import { execFileSync } from 'child_process';
+import { execFileSync, execFile } from 'child_process';
+import { promisify } from 'util';
 import { glob } from 'glob';
 import type { AppServices } from './types';
 import type { Session } from '../types/session';
@@ -955,6 +956,125 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
       return { success: true };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Failed to show in folder' };
+    }
+  });
+
+  // Compile a LaTeX file and return the path to the resulting PDF
+  const execFileAsync = promisify(execFile);
+
+  ipcMain.handle('file:compile-latex', async (_, request: { sessionId: string; filePath: string }) => {
+    try {
+      const session = sessionManager.getSession(request.sessionId);
+      if (!session) {
+        throw new Error(`Session not found: ${request.sessionId}`);
+      }
+
+      const ctx = sessionManager.getProjectContext(request.sessionId);
+      if (!ctx) throw new Error('Project not found for session');
+      const { pathResolver } = ctx;
+
+      // Ensure the file path is relative and safe
+      const normalizedPath = path.normalize(request.filePath);
+      if (normalizedPath.startsWith('..') || path.isAbsolute(normalizedPath)) {
+        throw new Error('Invalid file path');
+      }
+
+      const basePath = pathResolver.toFileSystem(session.worktreePath);
+      const fullPath = path.join(basePath, normalizedPath);
+
+      // Verify the file is within the worktree
+      if (!await pathResolver.isWithin(basePath, fullPath)) {
+        throw new Error('File path is outside worktree');
+      }
+
+      // Verify file exists
+      try {
+        await fs.access(fullPath);
+      } catch {
+        throw new Error(`File not found: ${normalizedPath}`);
+      }
+
+      const fileDir = path.dirname(fullPath);
+      const fileName = path.basename(fullPath);
+
+      // Try xelatex first, then pdflatex as fallback
+      const compilers = ['xelatex', 'pdflatex'];
+      let lastError: string | null = null;
+      let lastLog = '';
+
+      for (const compiler of compilers) {
+        try {
+          console.log(`[file:compile-latex] Trying ${compiler} for ${fileName}`);
+          const result = await execFileAsync(compiler, [
+            '-interaction=nonstopmode',
+            `-output-directory=${fileDir}`,
+            fullPath
+          ], {
+            cwd: fileDir,
+            timeout: 120_000,
+            maxBuffer: 10 * 1024 * 1024, // 10MB for large log output
+          });
+
+          // Check if PDF was generated
+          const pdfName = fileName.replace(/\.(tex|latex)$/i, '.pdf');
+          const pdfFullPath = path.join(fileDir, pdfName);
+
+          try {
+            await fs.access(pdfFullPath);
+            // PDF exists - return its path relative to the worktree
+            const pdfRelativePath = pathResolver.relative(basePath, pdfFullPath);
+            console.log(`[file:compile-latex] Success with ${compiler}, PDF at: ${pdfRelativePath}`);
+            return { success: true, pdfPath: pdfRelativePath };
+          } catch {
+            // PDF not generated despite no error in execution
+            lastLog = (result.stdout || '') + '\n' + (result.stderr || '');
+            lastError = `${compiler} completed but PDF was not generated`;
+            continue;
+          }
+        } catch (err: unknown) {
+          const execError = err as { stdout?: string; stderr?: string; message?: string; code?: string };
+          lastLog = (execError.stdout || '') + '\n' + (execError.stderr || '');
+
+          // Check if the error is "command not found" type
+          const isNotFound = execError.code === 'ENOENT' ||
+            (execError.message && (execError.message.includes('ENOENT') || execError.message.includes('not found')));
+
+          if (isNotFound) {
+            console.log(`[file:compile-latex] ${compiler} not found, trying next...`);
+            lastError = `${compiler} not found`;
+            continue;
+          }
+
+          // The compiler ran but failed (e.g., syntax errors in .tex)
+          // Check if PDF was still generated (LaTeX often exits non-zero but still generates a PDF)
+          const pdfName = fileName.replace(/\.(tex|latex)$/i, '.pdf');
+          const pdfFullPath = path.join(fileDir, pdfName);
+          try {
+            await fs.access(pdfFullPath);
+            const pdfRelativePath = pathResolver.relative(basePath, pdfFullPath);
+            console.log(`[file:compile-latex] ${compiler} had warnings/errors but PDF was generated: ${pdfRelativePath}`);
+            return { success: true, pdfPath: pdfRelativePath };
+          } catch {
+            // No PDF generated
+            lastError = `${compiler} compilation failed`;
+            continue;
+          }
+        }
+      }
+
+      // All compilers failed
+      return {
+        success: false,
+        error: lastError || 'No LaTeX compiler found',
+        log: lastLog || 'No LaTeX compiler (xelatex or pdflatex) was found. Please install a LaTeX distribution (e.g., TeX Live or MiKTeX).'
+      };
+    } catch (error) {
+      console.error('[file:compile-latex] Error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        log: ''
+      };
     }
   });
 }
