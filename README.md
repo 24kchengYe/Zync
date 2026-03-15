@@ -106,6 +106,19 @@ Zync handles all of the above automatically:
 └─────────────────────────────────────┴───────────────────┘
 ```
 
+## Architecture
+
+<p align="center">
+  <img src="docs/diagrams/architecture.svg" alt="Zync Architecture" width="850" />
+</p>
+
+<details>
+<summary>中文架构图 / Chinese Architecture Diagram</summary>
+<p align="center">
+  <img src="docs/diagrams/architecture-zh.svg" alt="Zync 架构图" width="850" />
+</p>
+</details>
+
 ## Screenshots
 
 <p align="center">

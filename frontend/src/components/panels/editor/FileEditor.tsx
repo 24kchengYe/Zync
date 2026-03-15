@@ -697,6 +697,14 @@ export function FileEditor({
   const [latexError, setLatexError] = useState<string | null>(null);
   const [latexPdfDataUrl, setLatexPdfDataUrl] = useState<string | null>(null);
   const [showLatexPreview, setShowLatexPreview] = useState(false);
+  const [splitPercent, setSplitPercent] = useState(50);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+
+  // Script run state
+  const [scriptRunning, setScriptRunning] = useState(false);
+  const [scriptOutput, setScriptOutput] = useState<string | null>(null);
+  const [scriptError, setScriptError] = useState<string | null>(null);
+  const [showScriptOutput, setShowScriptOutput] = useState(false);
 
   const { theme } = useTheme();
   const isDarkMode = theme !== 'light';
@@ -797,6 +805,10 @@ export function FileEditor({
     setLatexPdfDataUrl(null);
     setShowLatexPreview(false);
     setLatexError(null);
+    // Reset script output when switching tabs
+    setShowScriptOutput(false);
+    setScriptOutput(null);
+    setScriptError(null);
   }, [activeFilePath, saveCurrentFileState]);
 
   // Track whether loadFile is driving the active file change (to avoid double-loading)
@@ -878,6 +890,13 @@ export function FileEditor({
     return ext === 'ipynb';
   }, [selectedFile]);
 
+  // Check if this is a runnable script file
+  const isRunnableFile = useMemo(() => {
+    if (!selectedFile) return false;
+    const ext = selectedFile.path.split('.').pop()?.toLowerCase();
+    return ['py', 'js', 'ts', 'sh', 'bat', 'ps1'].includes(ext || '');
+  }, [selectedFile]);
+
   // Detect media file types for preview
   const mediaFileType = useMemo((): 'image' | 'pdf' | 'video' | 'audio' | null => {
     if (!selectedFile) return null;
@@ -907,6 +926,10 @@ export function FileEditor({
     setLatexPdfDataUrl(null);
     setShowLatexPreview(false);
     setLatexError(null);
+    // Reset script output when opening a new file
+    setShowScriptOutput(false);
+    setScriptOutput(null);
+    setScriptError(null);
 
     // If we have cached state for this file, let the useEffect handle restoring
     if (fileTabStatesRef.current.has(file.path)) {
@@ -1106,6 +1129,20 @@ export function FileEditor({
         monacoEditor.setScrollTop(scrollPos);
       }, 100);
     }
+
+    // Ctrl+S / Cmd+S: save file and auto-compile LaTeX
+    monacoEditor.addAction({
+      id: 'zync-save-and-compile',
+      label: 'Save and Compile',
+      keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS],
+      run: () => {
+        // Trigger save via auto-save (which already exists)
+        // Then trigger LaTeX compile if applicable
+        if (handleLatexCompileRef.current) {
+          handleLatexCompileRef.current();
+        }
+      }
+    });
   };
 
   const handleEditorChange = (value: string | undefined) => {
@@ -1186,6 +1223,9 @@ export function FileEditor({
     return () => window.removeEventListener('panel:event', handlePanelEvent as EventListener);
   }, [selectedFile, sessionId]);
 
+  // Ref for Ctrl+S to access latex compile
+  const handleLatexCompileRef = useRef<(() => void) | null>(null);
+
   // LaTeX compile handler
   const handleLatexCompile = useCallback(async () => {
     if (!selectedFile || !isLatexFile) return;
@@ -1225,6 +1265,39 @@ export function FileEditor({
       setLatexCompiling(false);
     }
   }, [selectedFile, isLatexFile, sessionId]);
+
+  // Keep ref in sync for Ctrl+S access
+  useEffect(() => {
+    handleLatexCompileRef.current = isLatexFile ? handleLatexCompile : null;
+  }, [isLatexFile, handleLatexCompile]);
+
+  // Script run handler
+  const handleRunScript = useCallback(async () => {
+    if (!selectedFile || !isRunnableFile) return;
+
+    setScriptRunning(true);
+    setScriptOutput(null);
+    setScriptError(null);
+    setShowScriptOutput(true);
+
+    try {
+      const result = await window.electronAPI.invoke('file:run-script', {
+        sessionId,
+        filePath: selectedFile.path
+      }) as { success: boolean; output?: string; error?: string };
+
+      if (result.success) {
+        setScriptOutput(result.output || '(no output)');
+      } else {
+        setScriptOutput(result.output || null);
+        setScriptError(result.error || 'Script execution failed');
+      }
+    } catch (err) {
+      setScriptError(err instanceof Error ? err.message : 'Script execution failed');
+    } finally {
+      setScriptRunning(false);
+    }
+  }, [selectedFile, isRunnableFile, sessionId]);
 
   // Load initial file if provided
   useEffect(() => {
@@ -1456,6 +1529,26 @@ export function FileEditor({
                 <span className="text-xs text-text-tertiary truncate max-w-[300px]">{selectedFile.path}</span>
               </div>
               <div className="flex items-center gap-2">
+                {/* Run Script button */}
+                {isRunnableFile && !mediaFileType && !isLatexFile && (
+                  <button
+                    onClick={handleRunScript}
+                    disabled={scriptRunning}
+                    className={`px-2 py-1 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                      scriptRunning
+                        ? 'bg-surface-tertiary text-text-tertiary cursor-not-allowed'
+                        : 'bg-status-success hover:bg-status-success/80 text-white'
+                    }`}
+                    title="Run script"
+                  >
+                    {scriptRunning ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Play className="w-3 h-3" />
+                    )}
+                    {scriptRunning ? 'Running...' : 'Run'}
+                  </button>
+                )}
                 {/* LaTeX Compile & Preview button */}
                 {isLatexFile && !mediaFileType && (
                   <button
@@ -1534,51 +1627,126 @@ export function FileEditor({
               </div>
             )}
             {/* Main content area: split view for LaTeX, normal view otherwise */}
-            <div className="flex-1 overflow-hidden">
-              {isLatexFile && showLatexPreview ? (
-                <div className="h-full flex">
-                  {/* Editor side */}
-                  <div className="flex-1 min-w-0 overflow-hidden">
-                    {editorContentArea}
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className={`${showScriptOutput ? 'flex-1 min-h-0' : 'h-full'} overflow-hidden`}>
+                {isLatexFile && showLatexPreview ? (
+                  <div className="h-full flex" ref={splitContainerRef}>
+                    {/* Editor side */}
+                    <div className="min-w-0 overflow-hidden" style={{ width: `${splitPercent}%` }}>
+                      {editorContentArea}
+                    </div>
+                    {/* Draggable divider */}
+                    <div
+                      className="w-1 bg-border-primary flex-shrink-0 cursor-col-resize hover:bg-interactive/50 active:bg-interactive transition-colors"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        const container = splitContainerRef.current;
+                        if (!container) return;
+                        const startX = e.clientX;
+                        const startPercent = splitPercent;
+                        const containerWidth = container.offsetWidth;
+                        const onMouseMove = (ev: MouseEvent) => {
+                          const delta = ev.clientX - startX;
+                          const newPercent = Math.max(20, Math.min(80, startPercent + (delta / containerWidth) * 100));
+                          setSplitPercent(newPercent);
+                        };
+                        const onMouseUp = () => {
+                          document.removeEventListener('mousemove', onMouseMove);
+                          document.removeEventListener('mouseup', onMouseUp);
+                          document.body.style.cursor = '';
+                          document.body.style.userSelect = '';
+                        };
+                        document.body.style.cursor = 'col-resize';
+                        document.body.style.userSelect = 'none';
+                        document.addEventListener('mousemove', onMouseMove);
+                        document.addEventListener('mouseup', onMouseUp);
+                      }}
+                    />
+                    {/* PDF preview / error side */}
+                    <div className="min-w-0 flex flex-col overflow-hidden" style={{ width: `${100 - splitPercent}%` }}>
+                      <div className="flex items-center justify-between px-3 py-1 bg-surface-secondary border-b border-border-primary flex-shrink-0">
+                        <span className="text-xs text-text-secondary font-medium">PDF Preview</span>
+                        <button
+                          onClick={() => { setShowLatexPreview(false); setLatexError(null); }}
+                          className="p-0.5 rounded hover:bg-surface-hover text-text-tertiary hover:text-text-primary"
+                          title="Close preview"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="flex-1 overflow-auto">
+                        {latexPdfDataUrl ? (
+                          <iframe
+                            src={latexPdfDataUrl}
+                            title="LaTeX PDF Preview"
+                            className="w-full h-full border-0"
+                          />
+                        ) : latexError ? (
+                          <div className="p-4">
+                            <div className="text-sm font-medium text-status-error mb-2">Compilation Error</div>
+                            <pre className="text-xs text-text-secondary bg-surface-tertiary rounded p-3 overflow-auto max-h-full whitespace-pre-wrap font-mono">
+                              {latexError}
+                            </pre>
+                          </div>
+                        ) : (
+                          <div className="h-full flex items-center justify-center text-text-tertiary text-sm">
+                            Click &quot;Compile &amp; Preview&quot; to generate PDF
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  {/* Divider */}
-                  <div className="w-px bg-border-primary flex-shrink-0" />
-                  {/* PDF preview / error side */}
-                  <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+                ) : (
+                  editorContentArea
+                )}
+              </div>
+              {/* Script output panel */}
+              {showScriptOutput && (
+                <>
+                  <div className="h-px bg-border-primary flex-shrink-0" />
+                  <div className="flex flex-col flex-shrink-0" style={{ height: '200px' }}>
                     <div className="flex items-center justify-between px-3 py-1 bg-surface-secondary border-b border-border-primary flex-shrink-0">
-                      <span className="text-xs text-text-secondary font-medium">PDF Preview</span>
-                      <button
-                        onClick={() => { setShowLatexPreview(false); setLatexError(null); }}
-                        className="p-0.5 rounded hover:bg-surface-hover text-text-tertiary hover:text-text-primary"
-                        title="Close preview"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-text-secondary font-medium">Output</span>
+                        {scriptRunning && (
+                          <Loader2 className="w-3 h-3 animate-spin text-text-tertiary" />
+                        )}
+                        {!scriptRunning && scriptError && (
+                          <span className="text-xs text-status-error">Exit with error</span>
+                        )}
+                        {!scriptRunning && !scriptError && scriptOutput !== null && (
+                          <span className="text-xs text-status-success">Done</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => { setScriptOutput(null); setScriptError(null); }}
+                          className="px-1.5 py-0.5 text-xs rounded hover:bg-surface-hover text-text-tertiary hover:text-text-primary"
+                          title="Clear output"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          onClick={() => { setShowScriptOutput(false); setScriptOutput(null); setScriptError(null); }}
+                          className="p-0.5 rounded hover:bg-surface-hover text-text-tertiary hover:text-text-primary"
+                          title="Close output panel"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex-1 overflow-auto">
-                      {latexPdfDataUrl ? (
-                        <iframe
-                          src={latexPdfDataUrl}
-                          title="LaTeX PDF Preview"
-                          className="w-full h-full border-0"
-                        />
-                      ) : latexError ? (
-                        <div className="p-4">
-                          <div className="text-sm font-medium text-status-error mb-2">Compilation Error</div>
-                          <pre className="text-xs text-text-secondary bg-surface-tertiary rounded p-3 overflow-auto max-h-full whitespace-pre-wrap font-mono">
-                            {latexError}
-                          </pre>
-                        </div>
-                      ) : (
-                        <div className="h-full flex items-center justify-center text-text-tertiary text-sm">
-                          Click &quot;Compile &amp; Preview&quot; to generate PDF
-                        </div>
-                      )}
+                    <div className="flex-1 overflow-auto bg-bg-primary">
+                      <pre className="text-xs text-text-secondary p-3 whitespace-pre-wrap font-mono">
+                        {scriptRunning && !scriptOutput && 'Running script...'}
+                        {scriptOutput}
+                        {scriptError && (
+                          <span className="text-status-error">{scriptOutput ? '\n' : ''}{scriptError}</span>
+                        )}
+                        {!scriptRunning && !scriptOutput && !scriptError && '(no output)'}
+                      </pre>
                     </div>
                   </div>
-                </div>
-              ) : (
-                editorContentArea
+                </>
               )}
             </div>
           </>
