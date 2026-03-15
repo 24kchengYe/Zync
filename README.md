@@ -244,6 +244,41 @@ We'd love help. Some areas where contributions are especially welcome:
 
 Found a bug or have an idea? [Open an issue](https://github.com/24kchengYe/Zync/issues). PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
+## Changelog
+
+### v1.0.0 (2026-03-15)
+
+**Core:**
+- Windows Permission IPC server using named pipes
+- Security mode (approve/ignore) works correctly across all code paths
+- Permission mode selector in workspace creation dialog
+- Permanent delete for archived workspaces
+- Uses global Claude Code installation (statusline support)
+- Claude Code manages its own sessions natively
+- Diff caching with SHA-1 fingerprint-based invalidation
+
+**Editor:**
+- Multi-file tab bar with cached state per file
+- Image/PDF/video/audio preview in Explorer
+- LaTeX compile & preview with draggable split view (Ctrl+S auto-compile)
+- Python/JS/TS/Shell script execution with output panel
+
+**UX:**
+- Git action descriptions (Fetch, Stash, Rebase, Merge, etc.)
+- "New Workspace" terminology unification
+- Settings dropdowns no longer close the dialog
+- DevTools toggle button in toolbar
+- Chinese path support (chcp 65001 UTF-8 codepage)
+- OpenRouter support for smart workspace naming
+- Chinese user guide (GUIDE_CN.md)
+
+**Fixes:**
+- Modal overflow clipping dropdown menus
+- Permission mode not passed from creation dialog to CLI
+- Delete button missing from archived workspaces
+- PTY terminal type corrected to xterm-256color
+- node_modules excluded from terminal PATH
+
 ## Documentation
 
 - [中文使用指南 / Chinese Guide](GUIDE_CN.md)
