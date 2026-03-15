@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a> · <a href="#features">Features</a> · <a href="GUIDE_CN.md">中文指南</a> · <a href="#contributing">Contributing</a>
+  <a href="#quick-start">Quick Start</a> · <a href="#features">Features</a> · <a href="#contributing">Contributing</a> · [English](#why-zync) | [中文](#为什么需要-zync)
 </p>
 
 ---
@@ -174,32 +174,39 @@ AI agent runs in that worktree (no conflicts with other sessions)
 You review the diff, then merge to main or archive
 ```
 
-<details>
-<summary>Architecture diagram</summary>
+### Architecture
+
 <p align="center">
   <img src="docs/diagrams/architecture.svg" alt="Zync Architecture" width="850" />
 </p>
-</details>
 
-<details>
-<summary>Workflow diagram</summary>
-<p align="center">
-  <img src="docs/diagrams/workflow.svg" alt="Zync Workflow" width="850" />
-</p>
-</details>
+### Worktree Isolation
 
-<details>
-<summary>Worktree isolation diagram</summary>
 <p align="center">
   <img src="docs/diagrams/worktree.svg" alt="Git Worktree Isolation" width="850" />
 </p>
-</details>
 
 <details>
-<summary>Panel system diagram</summary>
+<summary>More diagrams (Workflow, Panel System, Chinese versions)</summary>
+
+**Workflow:**
+<p align="center">
+  <img src="docs/diagrams/workflow.svg" alt="Zync Workflow" width="850" />
+</p>
+
+**Panel System:**
 <p align="center">
   <img src="docs/diagrams/panels.svg" alt="Zync Panel System" width="850" />
 </p>
+
+**中文图表 / Chinese Diagrams:**
+<p align="center">
+  <img src="docs/diagrams/architecture-zh.svg" alt="架构图" width="850" /><br/><br/>
+  <img src="docs/diagrams/worktree-zh.svg" alt="Worktree 隔离" width="850" /><br/><br/>
+  <img src="docs/diagrams/workflow-zh.svg" alt="工作流程" width="850" /><br/><br/>
+  <img src="docs/diagrams/panels-zh.svg" alt="面板系统" width="850" />
+</p>
+
 </details>
 
 ## Configuration
@@ -245,6 +252,105 @@ Found a bug or have an idea? [Open an issue](https://github.com/24kchengYe/Zync/
 - [Building on Windows](docs/BUILDING_ON_WINDOWS.md)
 - [Setup Troubleshooting](docs/troubleshooting/SETUP_TROUBLESHOOTING.md)
 - [Database Schema](docs/DATABASE_DOCUMENTATION.md)
+
+---
+
+<div align="center">
+
+# Zync 中文文档
+
+**面向 AI 编程代理的 IDE。**
+
+*并行运行多个 Claude Code、Codex 或 Aider 会话——每个都在独立的 git worktree 中工作。*
+
+</div>
+
+## 为什么需要 Zync？
+
+你一定经历过——
+
+打开终端，启动 Claude Code，给它一个任务，然后……等。想同时试另一种方案？你需要第二个终端、第二个分支，还得小心别让两个 Agent 改同一个文件。到第三个 Agent 的时候，你已经淹没在标签页和合并冲突里了。
+
+**Zync 解决了这个问题。** 每个会话自动获得独立的 git worktree。你在一个侧边栏里看到所有 Agent——谁在跑、谁做完了、谁在等你输入。Agent 完成后，你审查 diff 然后一键合并。不用手动建分支，不会有冲突，不用 Alt-Tab 切来切去。
+
+<table>
+<tr>
+<td width="50%">
+
+**没有 Zync**
+- 一次只能跑一个 Agent，或者冲突满天飞
+- 手动 `git worktree add` / 清理
+- 在终端之间 Alt-Tab 切换
+- 手动跑 `git diff` 审查改动
+- 不知道哪个 Agent 需要你的注意
+
+</td>
+<td width="50%">
+
+**有了 Zync**
+- 10+ 个 Agent 并行工作
+- 每个会话自动隔离 worktree
+- 统一的 Agent 管理面板
+- 内置语法高亮 diff 查看器
+- Agent 完成或需要输入时桌面通知
+
+</td>
+</tr>
+</table>
+
+## 快速开始
+
+**前置条件：** [Node.js](https://nodejs.org/) >= 22.14.0、[pnpm](https://pnpm.io/) >= 8、[Git](https://git-scm.com/)，以及至少一个 AI Agent（[Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex](https://github.com/openai/codex) 或 [Aider](https://aider.chat/)）
+
+```bash
+git clone https://github.com/24kchengYe/Zync.git
+cd Zync
+pnpm install && pnpm run setup
+```
+
+**Windows 一键启动：** 复制 `start.bat.example` 为 `start.bat`，编辑配置，双击运行。
+
+**手动启动：**
+```bash
+# 终端 1：启动前端
+pnpm run --filter frontend dev
+
+# 终端 2：启动应用（等前端显示 ready 后）
+npx electron .
+```
+
+## 核心功能
+
+| 功能 | 说明 |
+|------|------|
+| **并行 Agent 会话** | 同时运行 Claude Code、Codex、Aider 等，互不干扰 |
+| **内置 Diff 查看器** | 语法高亮显示每个 Agent 的改动，支持缓存加速 |
+| **权限控制** | 每个工作区独立选择：自动批准 或 手动审批 |
+| **完整 Git 工作流** | Fetch、Commit、Pull、Push、Rebase、Merge，侧边栏一键操作 |
+| **智能通知** | Agent 完成、出错或等待输入时桌面提醒 |
+| **多工具支持** | Claude Code 和 Codex 原生集成，其他工具通过自定义命令添加 |
+| **文件预览** | Explorer 支持图片、PDF、视频、音频预览 |
+| **多标签编辑** | 同时打开多个文件，标签栏切换 |
+| **LaTeX 编译** | 内置编译预览，Ctrl+S 自动编译，可拖动分栏 |
+| **脚本执行** | Python/JS/TS/Shell 文件一键运行 |
+
+## 平台支持
+
+| 平台 | 状态 | 说明 |
+|------|------|------|
+| **Windows** | 完整支持 | Named Pipe 权限 IPC、中文路径支持 |
+| **macOS** | 完整支持 | Universal 二进制（Intel + Apple Silicon） |
+| **Linux** | 完整支持 | deb 和 AppImage 包 |
+
+## 已知限制
+
+Zync 专注于 AI Agent 编排，**不替代你的 IDE**：
+- **没有代码编辑器** — 用 VS Code 或 PyCharm 编辑，Zync 有"Open in IDE"按钮
+- **没有调试器、LSP、插件** — 这些在你的 IDE 里，Zync 专注于 Agent 工作流层
+
+详细使用说明请看 [中文使用指南](GUIDE_CN.md)。
+
+---
 
 ## License
 
