@@ -959,6 +959,99 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
     }
   });
 
+  // Run a script file (Python, JS, TS, Shell, etc.) in the session's worktree
+  ipcMain.handle('file:run-script', async (_, request: { sessionId: string; filePath: string }) => {
+    try {
+      const session = sessionManager.getSession(request.sessionId);
+      if (!session) {
+        throw new Error(`Session not found: ${request.sessionId}`);
+      }
+
+      const ctx = sessionManager.getProjectContext(request.sessionId);
+      if (!ctx) throw new Error('Project not found for session');
+      const { pathResolver } = ctx;
+
+      // Ensure the file path is relative and safe
+      const normalizedPath = path.normalize(request.filePath);
+      if (normalizedPath.startsWith('..') || path.isAbsolute(normalizedPath)) {
+        throw new Error('Invalid file path');
+      }
+
+      const basePath = pathResolver.toFileSystem(session.worktreePath);
+      const fullPath = path.join(basePath, normalizedPath);
+
+      // Verify the file is within the worktree
+      if (!await pathResolver.isWithin(basePath, fullPath)) {
+        throw new Error('File path is outside worktree');
+      }
+
+      // Verify file exists
+      try {
+        await fs.access(fullPath);
+      } catch {
+        throw new Error(`File not found: ${normalizedPath}`);
+      }
+
+      // Detect runner based on file extension
+      const ext = path.extname(fullPath).toLowerCase();
+      const runnerMap: Record<string, { command: string; args: string[] }> = {
+        '.py': { command: 'python', args: [fullPath] },
+        '.js': { command: 'node', args: [fullPath] },
+        '.ts': { command: 'npx', args: ['tsx', fullPath] },
+        '.sh': { command: 'bash', args: [fullPath] },
+        '.bat': { command: 'cmd', args: ['/c', fullPath] },
+        '.ps1': { command: 'powershell', args: ['-ExecutionPolicy', 'Bypass', '-File', fullPath] },
+      };
+
+      const runner = runnerMap[ext];
+      if (!runner) {
+        throw new Error(`Unsupported file type: ${ext}. Supported: .py, .js, .ts, .sh, .bat, .ps1`);
+      }
+
+      console.log(`[file:run-script] Running ${runner.command} ${runner.args.join(' ')} in ${basePath}`);
+
+      const execFileAsync = promisify(execFile);
+      try {
+        const result = await execFileAsync(runner.command, runner.args, {
+          cwd: basePath,
+          timeout: 60_000,
+          maxBuffer: 5 * 1024 * 1024, // 5MB
+          env: { ...process.env },
+        });
+
+        const output = (result.stdout || '') + (result.stderr ? '\n[stderr]\n' + result.stderr : '');
+        return { success: true, output: output.trim() };
+      } catch (err: unknown) {
+        const execError = err as { stdout?: string; stderr?: string; message?: string; code?: string | number; killed?: boolean };
+
+        // Check if the runner was not found
+        const isNotFound = execError.code === 'ENOENT' ||
+          (execError.message && (execError.message.includes('ENOENT') || execError.message.includes('not found')));
+
+        if (isNotFound) {
+          throw new Error(`Runner not found: "${runner.command}". Please ensure it is installed and available on your PATH.`);
+        }
+
+        // The script ran but exited with an error
+        const output = (execError.stdout || '') + (execError.stderr ? '\n[stderr]\n' + execError.stderr : '');
+        const timedOut = execError.killed ? ' (timed out after 60s)' : '';
+
+        return {
+          success: false,
+          output: output.trim(),
+          error: `Script exited with error${timedOut}: ${execError.message || 'Unknown error'}`
+        };
+      }
+    } catch (error) {
+      console.error('[file:run-script] Error:', error);
+      return {
+        success: false,
+        output: '',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  });
+
   // Compile a LaTeX file and return the path to the resulting PDF
   const execFileAsync = promisify(execFile);
 
