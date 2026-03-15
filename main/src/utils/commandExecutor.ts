@@ -85,6 +85,7 @@ class CommandExecutor {
     const enhancedOptions = {
       ...cleanOptions,
       maxBuffer: cleanOptions?.maxBuffer || 10 * 1024 * 1024,
+      encoding: (cleanOptions?.encoding || 'utf-8') as BufferEncoding,
       env: {
         ...process.env,
         ...cleanOptions?.env,
@@ -96,8 +97,13 @@ class CommandExecutor {
       }
     };
 
+    // On Windows, prefix command with chcp 65001 to set UTF-8 codepage
+    const effectiveCommand = process.platform === 'win32'
+      ? `chcp 65001 >nul 2>&1 && ${command}`
+      : command;
+
     try {
-      const result = nodeExecSync(command, enhancedOptions as ExecSyncOptions);
+      const result = nodeExecSync(effectiveCommand, enhancedOptions as ExecSyncOptions);
 
       // Log success with a preview of the result (unless silent mode)
       if (result && !silentMode) {
@@ -189,8 +195,13 @@ class CommandExecutor {
       }
     };
 
+    // On Windows, prefix command with chcp 65001 to set UTF-8 codepage
+    const effectiveAsyncCommand = process.platform === 'win32'
+      ? `chcp 65001 >nul 2>&1 && ${command}`
+      : command;
+
     try {
-      const result = await nodeExecAsync(command, enhancedOptions);
+      const result = await nodeExecAsync(effectiveAsyncCommand, enhancedOptions);
 
       if (result.stdout) {
         const stdout = String(result.stdout);
