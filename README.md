@@ -24,18 +24,31 @@
   <strong>If Zync helps your workflow, please consider giving it a <a href="https://github.com/24kchengYe/Zync/stargazers">Star</a>!</strong>
 </p>
 
-## Why Zync?
+## The Problem
 
-Traditional IDEs give you an editor, a terminal, and a debugger — tools for *writing* code yourself. But in the age of AI coding agents, your job has changed: you're no longer the programmer, you're the **project manager** directing multiple AI agents.
+If you've tried running AI coding agents in VS Code or a regular terminal, you've hit these walls:
 
-Zync is the workspace for this new workflow:
+**1. One agent at a time.** You give Claude Code a task, then sit and wait. Want to try a different approach? You have to stop the first one, lose its context, and start over. You can't easily compare two solutions side by side.
+
+**2. Agents step on each other's toes.** Open two terminals and run two agents on the same project — they both edit the same files, create merge conflicts, and break each other's work. You spend more time untangling the mess than reviewing the code.
+
+**3. No easy way to review and roll back.** Your agent made 47 file changes. Which ones are good? Which ones broke something? In a terminal, you're running `git diff` manually. In VS Code, the source control panel wasn't designed for reviewing AI-generated bulk changes across branches.
+
+**4. Branching is manual and tedious.** The proper way to isolate parallel work is git worktrees — but creating, managing, and cleaning them up by hand is painful. Most people don't bother, and end up with agents fighting over the same working directory.
+
+**5. No unified view.** With multiple agents across multiple terminals, you're alt-tabbing constantly. There's no single dashboard showing "Agent A is done, Agent B is still running, Agent C needs input."
+
+## How Zync Solves This
+
+Zync handles all of the above automatically:
 
 - **Parallel execution** — Run 10+ AI agents simultaneously, each working on a different task
-- **Automatic isolation** — Every agent gets its own git worktree (a full copy of your project), so they never conflict with each other
-- **Review & merge** — Built-in diff viewer to inspect what each agent changed, then merge the best results back to your main branch
-- **Any agent, any model** — Works with Claude Code, OpenAI Codex, Aider, Goose, or any CLI-based AI coding tool
-- **Permission control** — Choose per workspace: let the AI run freely, or require your approval for every action
-- **Diff caching** — Intelligent fingerprint-based caching for instant tab switching
+- **Automatic isolation** — Every agent gets its own git worktree. No conflicts, no mess
+- **Built-in diff viewer** — See exactly what each agent changed, with syntax highlighting
+- **One-click merge** — Happy with an agent's work? Merge it back to main. Not happy? Archive it
+- **Any agent, any model** — Claude Code, Codex, Aider, Goose, or any CLI tool
+- **Permission control** — Auto-approve everything, or review each action manually
+- **Notifications** — Get alerted when an agent finishes or needs your input
 
 ## Zync vs Traditional IDEs
 
@@ -43,12 +56,13 @@ Zync is the workspace for this new workflow:
 |---|---|---|
 | **Who writes code** | You | AI agents |
 | **Your role** | Programmer | Project manager |
-| **Parallel work** | One editor at a time | 10+ agents in parallel |
+| **Parallel work** | One terminal at a time | 10+ agents in parallel |
 | **Isolation** | Manual branching | Automatic git worktrees |
-| **Code review** | External tools (GitHub) | Built-in diff viewer |
+| **Code review** | `git diff` or GitHub PR | Built-in diff viewer |
 | **Agent support** | Extensions/plugins | Native, any CLI agent |
+| **Workspace management** | You manage branches | Automatic lifecycle |
 
-> **Note:** Zync and VS Code are complementary, not competing. Use VS Code for writing LaTeX, debugging, and plugins. Use Zync for orchestrating multiple AI agents. Zync has an "Open in IDE" button to jump into VS Code for any workspace.
+> **Zync and VS Code are complementary, not competing.** Use VS Code for writing LaTeX, debugging, and its plugin ecosystem. Use Zync when you want to throw multiple AI agents at a problem and pick the best result. Zync has an "Open in IDE" button to jump into VS Code for any workspace.
 
 ## Workflow
 
@@ -279,9 +293,32 @@ Access via gear icon or `Ctrl + ,`:
 - PTY terminal type corrected to xterm-256color
 - Global Claude Code used instead of bundled version
 
-## Contributing
+## Known Limitations
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Zync is purpose-built for AI agent orchestration. It intentionally does **not** try to replace your IDE:
+
+- **No code editor** — Zync has a basic file explorer, but for serious editing you should use VS Code, PyCharm, or your preferred editor. Click "Open in IDE" to jump there.
+- **No debugging tools** — Breakpoints, variable inspection, etc. live in your IDE.
+- **No plugin ecosystem** — VS Code has extensions for every language and framework. Zync focuses on the agent workflow layer.
+- **No syntax intelligence** — No autocomplete, linting, or language server. The AI agents handle that in their own context.
+
+These are deliberate design choices, not missing features. Zync does one thing well: orchestrating AI agents.
+
+## Roadmap & Contributing
+
+We'd love help making Zync better. Here are areas where contributions are especially welcome:
+
+- [ ] Auto-rename workspaces based on AI's actual work content
+- [ ] Performance optimization for large projects (Explorer, Diff)
+- [ ] Plugin system for custom agent integrations
+- [ ] Workspace templates (pre-configured agent + prompt combos)
+- [ ] Session statistics dashboard (tokens used, time spent, etc.)
+- [ ] Conflict resolution UI for merge failures
+- [ ] i18n / localization support
+
+Have an idea or found a bug? [Open an issue](https://github.com/24kchengYe/Zync/issues) — feature requests, bug reports, and PRs are all welcome.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 ## License
 
