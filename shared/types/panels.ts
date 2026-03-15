@@ -84,7 +84,7 @@ export interface BaseAIPanelState {
 }
 
 export interface ExplorerPanelState {
-  filePath?: string;              // Currently open file
+  filePath?: string;              // Currently open/active file
   content?: string;               // File content (for unsaved changes)
   isDirty?: boolean;              // Has unsaved changes
   cursorPosition?: {              // Cursor location
@@ -96,6 +96,9 @@ export interface ExplorerPanelState {
   readOnly?: boolean;             // Read-only mode
   fontSize?: number;              // Editor font size preference
   theme?: string;                 // Editor theme preference
+
+  // Multi-file tabs state
+  openFiles?: string[];           // Array of open file paths (tab bar)
 
   // File tree state
   expandedDirs?: string[];        // List of expanded directory paths

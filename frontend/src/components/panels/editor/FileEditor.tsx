@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import type * as monaco from 'monaco-editor';
-import { ChevronRight, ChevronDown, File, Folder, RefreshCw, Plus, Trash2, FolderPlus, Search, X, Eye, Code, Copy, FolderOpen } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder, RefreshCw, Plus, Trash2, FolderPlus, Search, X, Eye, Code, Copy, FolderOpen, Play, Loader2 } from 'lucide-react';
 import { useTree } from '@headless-tree/react';
 import { asyncDataLoaderFeature, selectionFeature, hotkeysCoreFeature, expandAllFeature } from '@headless-tree/core';
 import type { ItemInstance } from '@headless-tree/core';
@@ -642,12 +642,25 @@ interface FileEditorProps {
   onStateChange?: (state: Partial<ExplorerPanelState>) => void;
 }
 
-export function FileEditor({ 
-  sessionId, 
+// Per-file cached state for multi-tab support
+interface FileTabState {
+  filePath: string;
+  content: string;
+  originalContent: string;
+  viewMode: 'edit' | 'preview';
+  gitStatus: 'clean' | 'modified' | 'untracked';
+  cursorPosition?: { line: number; column: number };
+  scrollPosition?: number;
+  mediaDataUrl?: string | null;
+  mediaFileType?: 'image' | 'pdf' | 'video' | 'audio' | null;
+}
+
+export function FileEditor({
+  sessionId,
   initialFilePath,
   initialState,
   onFileChange,
-  onStateChange 
+  onStateChange
 }: FileEditorProps) {
   console.log('[FileEditor] Mounting with:', {
     sessionId,
@@ -655,7 +668,20 @@ export function FileEditor({
     initialState,
     hasOnStateChange: !!onStateChange
   });
-  
+
+  // Multi-file tabs state
+  const [openFiles, setOpenFiles] = useState<string[]>(() => {
+    if (initialState?.openFiles?.length) return initialState.openFiles;
+    if (initialFilePath) return [initialFilePath];
+    return [];
+  });
+  const [activeFilePath, setActiveFilePath] = useState<string | null>(() => {
+    return initialState?.filePath || initialFilePath || null;
+  });
+
+  // Cache for per-file state (content, cursor, scroll, etc.)
+  const fileTabStatesRef = useRef<Map<string, FileTabState>>(new Map());
+
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [originalContent, setOriginalContent] = useState<string>('');
@@ -665,6 +691,12 @@ export function FileEditor({
   const [gitStatus, setGitStatus] = useState<'clean' | 'modified' | 'untracked'>('clean');
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof monaco | null>(null);
+
+  // LaTeX compilation state
+  const [latexCompiling, setLatexCompiling] = useState(false);
+  const [latexError, setLatexError] = useState<string | null>(null);
+  const [latexPdfDataUrl, setLatexPdfDataUrl] = useState<string | null>(null);
+  const [showLatexPreview, setShowLatexPreview] = useState(false);
 
   const { theme } = useTheme();
   const isDarkMode = theme !== 'light';
@@ -687,6 +719,151 @@ export function FileEditor({
     onResize: handleTreeResize
   });
   
+  // Data URL for media file preview
+  const [mediaDataUrl, setMediaDataUrl] = useState<string | null>(null);
+  const [mediaLoading, setMediaLoading] = useState(false);
+
+  // Save current file's state into the cache before switching
+  const saveCurrentFileState = useCallback(() => {
+    if (selectedFile && activeFilePath) {
+      const editor = editorRef.current;
+      const position = editor?.getPosition?.();
+      const scrollTop = editor?.getScrollTop?.();
+      // Compute media file type inline to avoid dependency ordering issues
+      const ext = activeFilePath.split('.').pop()?.toLowerCase() || '';
+      let mft: 'image' | 'pdf' | 'video' | 'audio' | null = null;
+      if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'ico'].includes(ext)) mft = 'image';
+      else if (ext === 'pdf') mft = 'pdf';
+      else if (['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(ext)) mft = 'video';
+      else if (['mp3', 'wav', 'flac', 'aac', 'm4a'].includes(ext)) mft = 'audio';
+
+      fileTabStatesRef.current.set(activeFilePath, {
+        filePath: activeFilePath,
+        content: fileContent,
+        originalContent,
+        viewMode,
+        gitStatus,
+        cursorPosition: position ? { line: position.lineNumber, column: position.column } : undefined,
+        scrollPosition: scrollTop,
+        mediaDataUrl,
+        mediaFileType: mft,
+      });
+    }
+  }, [selectedFile, activeFilePath, fileContent, originalContent, viewMode, gitStatus, mediaDataUrl]);
+
+  // Persist openFiles to panel state
+  useEffect(() => {
+    if (onStateChange) {
+      onStateChange({ openFiles });
+    }
+  }, [openFiles]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle closing a tab
+  const handleCloseTab = useCallback((filePath: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    setOpenFiles(prev => {
+      const newFiles = prev.filter(f => f !== filePath);
+      // If we're closing the active file, switch to another tab
+      if (filePath === activeFilePath) {
+        const closedIndex = prev.indexOf(filePath);
+        const nextActive = newFiles.length > 0
+          ? newFiles[Math.min(closedIndex, newFiles.length - 1)]
+          : null;
+        setActiveFilePath(nextActive);
+        if (!nextActive) {
+          setSelectedFile(null);
+          setFileContent('');
+          setOriginalContent('');
+          setMediaDataUrl(null);
+          setLatexPdfDataUrl(null);
+          setShowLatexPreview(false);
+        }
+      }
+      return newFiles;
+    });
+    // Remove from cache
+    fileTabStatesRef.current.delete(filePath);
+  }, [activeFilePath]);
+
+  // Handle switching to a tab
+  const handleSwitchTab = useCallback((filePath: string) => {
+    if (filePath === activeFilePath) return;
+    // Save current state
+    saveCurrentFileState();
+    setActiveFilePath(filePath);
+    // Reset LaTeX preview when switching tabs
+    setLatexPdfDataUrl(null);
+    setShowLatexPreview(false);
+    setLatexError(null);
+  }, [activeFilePath, saveCurrentFileState]);
+
+  // Track whether loadFile is driving the active file change (to avoid double-loading)
+  const loadingFromDiskRef = useRef(false);
+
+  // When activeFilePath changes (tab click), restore cached state
+  useEffect(() => {
+    if (!activeFilePath) return;
+    // If loadFile is handling the loading, skip this effect
+    if (loadingFromDiskRef.current) {
+      loadingFromDiskRef.current = false;
+      return;
+    }
+
+    const cached = fileTabStatesRef.current.get(activeFilePath);
+    if (cached) {
+      // Restore from cache
+      const file: FileItem = {
+        name: activeFilePath.split('/').pop() || '',
+        path: activeFilePath,
+        isDirectory: false
+      };
+      setSelectedFile(file);
+      setFileContent(cached.content);
+      setOriginalContent(cached.originalContent);
+      setViewMode(cached.viewMode);
+      setGitStatus(cached.gitStatus);
+      setMediaDataUrl(cached.mediaDataUrl || null);
+      setError(null);
+
+      // Restore cursor and scroll position after editor renders
+      if (cached.cursorPosition || cached.scrollPosition !== undefined) {
+        setTimeout(() => {
+          const editor = editorRef.current;
+          if (editor) {
+            if (cached.cursorPosition) {
+              editor.setPosition({
+                lineNumber: cached.cursorPosition.line,
+                column: cached.cursorPosition.column
+              });
+              editor.revealPositionInCenter({
+                lineNumber: cached.cursorPosition.line,
+                column: cached.cursorPosition.column
+              });
+            }
+            if (cached.scrollPosition !== undefined) {
+              editor.setScrollTop(cached.scrollPosition);
+            }
+          }
+        }, 50);
+      }
+
+      if (onStateChange) {
+        onStateChange({ filePath: activeFilePath, isDirty: cached.content !== cached.originalContent });
+      }
+    }
+    // If not cached and not from loadFile, it means we have a stale activeFilePath (e.g. from initial state)
+    // which loadFile will handle via the initial file load effect below
+  }, [activeFilePath]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Check if this is a LaTeX file
+  const isLatexFile = useMemo(() => {
+    if (!selectedFile) return false;
+    const ext = selectedFile.path.split('.').pop()?.toLowerCase();
+    return ext === 'tex' || ext === 'latex';
+  }, [selectedFile]);
+
   // Check if this is a markdown file
   const isMarkdownFile = useMemo(() => {
     if (!selectedFile) return false;
@@ -712,12 +889,35 @@ export function FileEditor({
     return null;
   }, [selectedFile]);
 
-  // Data URL for media file preview
-  const [mediaDataUrl, setMediaDataUrl] = useState<string | null>(null);
-  const [mediaLoading, setMediaLoading] = useState(false);
-
   const loadFile = useCallback(async (file: FileItem | null) => {
     if (!file || file.isDirectory) return;
+
+    // Save current tab state before switching
+    saveCurrentFileState();
+
+    // Add to open files if not already there
+    setOpenFiles(prev => {
+      if (!prev.includes(file.path)) {
+        return [...prev, file.path];
+      }
+      return prev;
+    });
+
+    // Reset LaTeX preview when opening a new file
+    setLatexPdfDataUrl(null);
+    setShowLatexPreview(false);
+    setLatexError(null);
+
+    // If we have cached state for this file, let the useEffect handle restoring
+    if (fileTabStatesRef.current.has(file.path)) {
+      setActiveFilePath(file.path);
+      setLoading(false);
+      return;
+    }
+
+    // Mark that loadFile is driving this change so the effect doesn't double-load
+    loadingFromDiskRef.current = true;
+    setActiveFilePath(file.path);
 
     setLoading(true);
     setError(null);
@@ -841,7 +1041,7 @@ export function FileEditor({
     } finally {
       setLoading(false);
     }
-  }, [sessionId, onFileChange, onStateChange, initialState]);
+  }, [sessionId, onFileChange, onStateChange, initialState, saveCurrentFileState]);
 
 
   const handleEditorMount = (editor: monaco.editor.IStandaloneCodeEditor, monacoInstance: typeof monaco) => {
@@ -985,7 +1185,47 @@ export function FileEditor({
     window.addEventListener('panel:event', handlePanelEvent as EventListener);
     return () => window.removeEventListener('panel:event', handlePanelEvent as EventListener);
   }, [selectedFile, sessionId]);
-  
+
+  // LaTeX compile handler
+  const handleLatexCompile = useCallback(async () => {
+    if (!selectedFile || !isLatexFile) return;
+
+    setLatexCompiling(true);
+    setLatexError(null);
+    setLatexPdfDataUrl(null);
+
+    try {
+      const result = await window.electronAPI.invoke('file:compile-latex', {
+        sessionId,
+        filePath: selectedFile.path
+      }) as { success: boolean; pdfPath?: string; error?: string; log?: string };
+
+      if (result.success && result.pdfPath) {
+        // Read the compiled PDF as binary
+        // pdfPath is relative to worktree
+        const pdfResult = await window.electronAPI.invoke('file:readBinary', {
+          sessionId,
+          filePath: result.pdfPath
+        });
+
+        if (pdfResult.success) {
+          setLatexPdfDataUrl(`data:application/pdf;base64,${pdfResult.base64}`);
+          setShowLatexPreview(true);
+        } else {
+          setLatexError(`Failed to read compiled PDF: ${pdfResult.error}`);
+        }
+      } else {
+        setLatexError(result.log || result.error || 'LaTeX compilation failed');
+        setShowLatexPreview(true); // Show error panel
+      }
+    } catch (err) {
+      setLatexError(err instanceof Error ? err.message : 'LaTeX compilation failed');
+      setShowLatexPreview(true);
+    } finally {
+      setLatexCompiling(false);
+    }
+  }, [selectedFile, isLatexFile, sessionId]);
+
   // Load initial file if provided
   useEffect(() => {
     if (initialFilePath && !selectedFile) {
@@ -1033,9 +1273,90 @@ export function FileEditor({
     };
   }, [selectedFile?.path]); // Run cleanup when file changes
 
+  // Editor content area (reusable between normal and split view)
+  const editorContentArea = (
+    <>
+      {mediaFileType && mediaDataUrl ? (
+        <div className="h-full overflow-auto bg-bg-primary flex items-center justify-center p-4">
+          {mediaFileType === 'image' && (
+            <img
+              src={mediaDataUrl}
+              alt={selectedFile?.name || ''}
+              className="max-w-full max-h-full object-contain"
+            />
+          )}
+          {mediaFileType === 'pdf' && (
+            <iframe
+              src={mediaDataUrl}
+              title={selectedFile?.name || ''}
+              className="w-full h-full border-0"
+            />
+          )}
+          {mediaFileType === 'video' && (
+            <video
+              src={mediaDataUrl}
+              controls
+              className="max-w-full max-h-full"
+            >
+              Your browser does not support video playback.
+            </video>
+          )}
+          {mediaFileType === 'audio' && (
+            <div className="flex flex-col items-center gap-4">
+              <div className="text-4xl text-text-tertiary">&#9835;</div>
+              <span className="text-sm text-text-secondary">{selectedFile?.name || ''}</span>
+              <audio
+                src={mediaDataUrl}
+                controls
+                className="w-80"
+              >
+                Your browser does not support audio playback.
+              </audio>
+            </div>
+          )}
+        </div>
+      ) : mediaFileType && mediaLoading ? (
+        <div className="h-full flex items-center justify-center text-text-secondary">
+          Loading preview...
+        </div>
+      ) : viewMode === 'preview' && isMarkdownFile ? (
+        <div className="h-full overflow-auto bg-bg-primary">
+          <MarkdownPreview
+            content={fileContent}
+            className="min-h-full"
+            id={`file-editor-preview-${sessionId}-${selectedFile?.path.replace(/[^a-zA-Z0-9]/g, '-') || ''}`}
+          />
+        </div>
+      ) : viewMode === 'preview' && isNotebookFile ? (
+        <div className="h-full overflow-auto bg-bg-primary">
+          <NotebookPreview
+            content={fileContent}
+            className="min-h-full"
+          />
+        </div>
+      ) : (
+        <MonacoErrorBoundary>
+          <Editor
+            theme={isDarkMode ? 'vs-dark' : 'light'}
+            value={fileContent}
+            onChange={handleEditorChange}
+            onMount={handleEditorMount}
+            options={{
+              minimap: { enabled: true },
+              fontSize: 14,
+              wordWrap: 'on',
+              automaticLayout: true,
+            }}
+            language={getLanguageFromPath(selectedFile?.path || '')}
+          />
+        </MonacoErrorBoundary>
+      )}
+    </>
+  );
+
   return (
     <div className="h-full flex">
-      <div 
+      <div
         className="bg-surface-secondary border-r border-border-primary relative flex-shrink-0"
         style={{ width: `${fileTreeWidth}px` }}
       >
@@ -1048,7 +1369,7 @@ export function FileEditor({
           initialShowSearch={initialState?.showSearch}
           onTreeStateChange={handleTreeStateChange}
         />
-        
+
         {/* Resize handle */}
         <div
           className="absolute top-0 right-0 w-1 h-full cursor-col-resize group z-10"
@@ -1068,16 +1389,61 @@ export function FileEditor({
           </div>
         </div>
       </div>
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Tab bar */}
+        {openFiles.length > 0 && (
+          <div className="flex items-center bg-surface-secondary border-b border-border-primary overflow-x-auto flex-shrink-0 scrollbar-thin">
+            {openFiles.map((filePath) => {
+              const fileName = filePath.split('/').pop() || filePath;
+              const isActive = filePath === activeFilePath;
+              const cachedState = fileTabStatesRef.current.get(filePath);
+              const tabIsDirty = isActive
+                ? hasUnsavedChanges
+                : cachedState ? cachedState.content !== cachedState.originalContent : false;
+
+              return (
+                <div
+                  key={filePath}
+                  className={`group flex items-center gap-1 px-3 py-1.5 cursor-pointer border-r border-border-primary text-sm whitespace-nowrap select-none transition-colors ${
+                    isActive
+                      ? 'bg-bg-primary text-text-primary border-b-2 border-b-interactive'
+                      : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary border-b-2 border-b-transparent'
+                  }`}
+                  onClick={() => handleSwitchTab(filePath)}
+                  title={filePath}
+                  onMouseDown={(e) => {
+                    // Middle-click to close tab
+                    if (e.button === 1) {
+                      e.preventDefault();
+                      handleCloseTab(filePath);
+                    }
+                  }}
+                >
+                  <File className="w-3.5 h-3.5 flex-shrink-0 text-text-tertiary" />
+                  <span className="max-w-[120px] truncate">{fileName}</span>
+                  {tabIsDirty && (
+                    <span className="text-status-warning text-xs flex-shrink-0">●</span>
+                  )}
+                  <button
+                    className={`p-0.5 rounded flex-shrink-0 transition-opacity ${
+                      isActive ? 'opacity-60 hover:opacity-100' : 'opacity-0 group-hover:opacity-60 hover:!opacity-100'
+                    } hover:bg-surface-tertiary`}
+                    onClick={(e) => handleCloseTab(filePath, e)}
+                    title="Close"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {selectedFile ? (
           <>
-            <div className="flex items-center justify-between px-4 py-2 bg-surface-secondary border-b border-border-primary">
+            {/* Toolbar */}
+            <div className="flex items-center justify-between px-4 py-1.5 bg-surface-secondary border-b border-border-primary flex-shrink-0">
               <div className="flex items-center gap-2">
-                <File className="w-4 h-4 text-text-tertiary" />
-                <span className="text-sm text-text-primary">
-                  {selectedFile.path}
-                  {hasUnsavedChanges && <span className="text-status-warning ml-2">●</span>}
-                </span>
                 {gitStatus !== 'clean' && (
                   <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
                     gitStatus === 'untracked'
@@ -1087,8 +1453,29 @@ export function FileEditor({
                     {gitStatus === 'untracked' ? 'U' : 'M'}
                   </span>
                 )}
+                <span className="text-xs text-text-tertiary truncate max-w-[300px]">{selectedFile.path}</span>
               </div>
               <div className="flex items-center gap-2">
+                {/* LaTeX Compile & Preview button */}
+                {isLatexFile && !mediaFileType && (
+                  <button
+                    onClick={handleLatexCompile}
+                    disabled={latexCompiling}
+                    className={`px-2 py-1 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                      latexCompiling
+                        ? 'bg-surface-tertiary text-text-tertiary cursor-not-allowed'
+                        : 'bg-interactive hover:bg-interactive-hover text-white'
+                    }`}
+                    title="Compile LaTeX and preview PDF"
+                  >
+                    {latexCompiling ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Play className="w-3 h-3" />
+                    )}
+                    {latexCompiling ? 'Compiling...' : 'Compile & Preview'}
+                  </button>
+                )}
                 {/* Preview Toggle for Markdown/Notebook Files (not shown for media files) */}
                 {!mediaFileType && (isMarkdownFile || isNotebookFile) && (
                   <div className="flex items-center rounded-lg border border-border-primary bg-surface-tertiary">
@@ -1129,12 +1516,12 @@ export function FileEditor({
                     {hasUnsavedChanges ? (
                       <>
                         <div className="w-2 h-2 bg-status-warning rounded-full animate-pulse" />
-                        <span className="text-status-warning">Auto-saving...</span>
+                        <span className="text-status-warning text-xs">Auto-saving...</span>
                       </>
                     ) : (
                       <>
                         <div className="w-2 h-2 bg-status-success rounded-full" />
-                        <span className="text-status-success">All changes saved</span>
+                        <span className="text-status-success text-xs">Saved</span>
                       </>
                     )}
                   </div>
@@ -1142,85 +1529,56 @@ export function FileEditor({
               </div>
             </div>
             {error && (
-              <div className="px-4 py-2 bg-status-error/20 text-status-error text-sm">
+              <div className="px-4 py-2 bg-status-error/20 text-status-error text-sm flex-shrink-0">
                 Error: {error}
               </div>
             )}
+            {/* Main content area: split view for LaTeX, normal view otherwise */}
             <div className="flex-1 overflow-hidden">
-              {mediaFileType && mediaDataUrl ? (
-                <div className="h-full overflow-auto bg-bg-primary flex items-center justify-center p-4">
-                  {mediaFileType === 'image' && (
-                    <img
-                      src={mediaDataUrl}
-                      alt={selectedFile.name}
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  )}
-                  {mediaFileType === 'pdf' && (
-                    <iframe
-                      src={mediaDataUrl}
-                      title={selectedFile.name}
-                      className="w-full h-full border-0"
-                    />
-                  )}
-                  {mediaFileType === 'video' && (
-                    <video
-                      src={mediaDataUrl}
-                      controls
-                      className="max-w-full max-h-full"
-                    >
-                      Your browser does not support video playback.
-                    </video>
-                  )}
-                  {mediaFileType === 'audio' && (
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="text-4xl text-text-tertiary">&#9835;</div>
-                      <span className="text-sm text-text-secondary">{selectedFile.name}</span>
-                      <audio
-                        src={mediaDataUrl}
-                        controls
-                        className="w-80"
+              {isLatexFile && showLatexPreview ? (
+                <div className="h-full flex">
+                  {/* Editor side */}
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    {editorContentArea}
+                  </div>
+                  {/* Divider */}
+                  <div className="w-px bg-border-primary flex-shrink-0" />
+                  {/* PDF preview / error side */}
+                  <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-1 bg-surface-secondary border-b border-border-primary flex-shrink-0">
+                      <span className="text-xs text-text-secondary font-medium">PDF Preview</span>
+                      <button
+                        onClick={() => { setShowLatexPreview(false); setLatexError(null); }}
+                        className="p-0.5 rounded hover:bg-surface-hover text-text-tertiary hover:text-text-primary"
+                        title="Close preview"
                       >
-                        Your browser does not support audio playback.
-                      </audio>
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
-                  )}
-                </div>
-              ) : mediaFileType && mediaLoading ? (
-                <div className="h-full flex items-center justify-center text-text-secondary">
-                  Loading preview...
-                </div>
-              ) : viewMode === 'preview' && isMarkdownFile ? (
-                <div className="h-full overflow-auto bg-bg-primary">
-                  <MarkdownPreview
-                    content={fileContent}
-                    className="min-h-full"
-                    id={`file-editor-preview-${sessionId}-${selectedFile.path.replace(/[^a-zA-Z0-9]/g, '-')}`}
-                  />
-                </div>
-              ) : viewMode === 'preview' && isNotebookFile ? (
-                <div className="h-full overflow-auto bg-bg-primary">
-                  <NotebookPreview
-                    content={fileContent}
-                    className="min-h-full"
-                  />
+                    <div className="flex-1 overflow-auto">
+                      {latexPdfDataUrl ? (
+                        <iframe
+                          src={latexPdfDataUrl}
+                          title="LaTeX PDF Preview"
+                          className="w-full h-full border-0"
+                        />
+                      ) : latexError ? (
+                        <div className="p-4">
+                          <div className="text-sm font-medium text-status-error mb-2">Compilation Error</div>
+                          <pre className="text-xs text-text-secondary bg-surface-tertiary rounded p-3 overflow-auto max-h-full whitespace-pre-wrap font-mono">
+                            {latexError}
+                          </pre>
+                        </div>
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-text-tertiary text-sm">
+                          Click &quot;Compile &amp; Preview&quot; to generate PDF
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <MonacoErrorBoundary>
-                  <Editor
-                    theme={isDarkMode ? 'vs-dark' : 'light'}
-                    value={fileContent}
-                    onChange={handleEditorChange}
-                    onMount={handleEditorMount}
-                    options={{
-                      minimap: { enabled: true },
-                      fontSize: 14,
-                      wordWrap: 'on',
-                      automaticLayout: true,
-                    }}
-                    language={getLanguageFromPath(selectedFile.path)}
-                  />
-                </MonacoErrorBoundary>
+                editorContentArea
               )}
             </div>
           </>
@@ -1276,6 +1634,8 @@ function getLanguageFromPath(filePath: string): string {
     graphql: 'graphql',
     vue: 'vue',
     svelte: 'svelte',
+    tex: 'latex',
+    latex: 'latex',
   };
   
   return languageMap[ext || ''] || 'plaintext';
