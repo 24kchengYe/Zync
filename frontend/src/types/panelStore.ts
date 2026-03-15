@@ -1,0 +1,18 @@
+import { ToolPanel } from '../../../shared/types/panels';
+
+export interface PanelStore {
+  // State (using plain objects instead of Maps for React reactivity)
+  panels: Record<string, ToolPanel[]>;        // sessionId -> panels
+  activePanels: Record<string, string>;       // sessionId -> active panelId
+
+  // Synchronous state update actions
+  setPanels: (sessionId: string, panels: ToolPanel[]) => void;
+  setActivePanel: (sessionId: string, panelId: string) => void;
+  addPanel: (panel: ToolPanel) => void;
+  removePanel: (sessionId: string, panelId: string) => void;
+  updatePanelState: (panel: ToolPanel) => void;
+
+  // Getters
+  getSessionPanels: (sessionId: string) => ToolPanel[];
+  getActivePanel: (sessionId: string) => ToolPanel | undefined;
+}

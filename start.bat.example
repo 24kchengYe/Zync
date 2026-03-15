@@ -1,0 +1,13 @@
+@echo off
+cd /d D:\pythonPycharms\Zync
+
+rem Optional: OpenRouter config for smart workspace naming
+rem set OPENAI_API_KEY=your-openrouter-api-key
+rem set OPENAI_BASE_URL=https://openrouter.ai/api/v1
+rem set OPENAI_MODEL=anthropic/claude-haiku-4-5
+
+start "Zync-Frontend" cmd /c "pnpm run --filter frontend dev"
+echo Waiting for frontend to start...
+timeout /t 5 /nobreak >nul
+start "Zync-Electron" cmd /c "set OPENAI_API_KEY=%OPENAI_API_KEY%&& set OPENAI_BASE_URL=%OPENAI_BASE_URL%&& set OPENAI_MODEL=%OPENAI_MODEL%&& npx electron ."
+echo Zync started!

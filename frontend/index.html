@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pane</title>
+    <script>
+      // Apply theme class before React loads to prevent flash
+      const savedTheme = localStorage.getItem('theme');
+      const theme = (savedTheme === 'light' || savedTheme === 'oled') ? savedTheme : 'dark';
+      document.documentElement.classList.add(theme);
+    </script>
+  </head>
+  <body>
+    <script>
+      // Also apply to body
+      const t = localStorage.getItem('theme'); document.body.classList.add(t === 'light' ? 'light' : t === 'oled' ? 'oled' : 'dark');
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

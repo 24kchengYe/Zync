@@ -1,0 +1,68 @@
+import { useEffect } from 'react';
+import type { ReactNode } from 'react';
+import { Modal } from './ui/Modal';
+import { Button } from './ui/Button';
+
+interface ConfirmDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: 'danger' | 'warning' | 'primary';
+  icon?: ReactNode;
+}
+
+export function ConfirmDialog({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  variant = 'danger',
+  icon
+}: ConfirmDialogProps) {
+  // Enter key handler only (no Escape - Modal handles it)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        onConfirm();
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, onConfirm, onClose]);
+
+  if (!isOpen) return null;
+
+  const handleConfirm = () => {
+    onConfirm();
+    onClose();
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="sm">
+      <div className="p-6 pt-2">
+        <div className="flex items-start gap-3 mb-4">
+          {icon && <div className="flex-shrink-0">{icon}</div>}
+          <h3 className="text-lg font-medium text-text-primary">{title}</h3>
+        </div>
+        <p className="text-text-secondary whitespace-pre-line leading-relaxed mb-6">
+          {message}
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button variant="secondary" onClick={onClose}>{cancelText}</Button>
+          <Button variant={variant} onClick={handleConfirm} autoFocus>{confirmText}</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}

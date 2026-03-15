@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0F172A"/>
+      <stop offset="100%" style="stop-color:#1E293B"/>
+    </linearGradient>
+    <linearGradient id="zGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60A5FA"/>
+      <stop offset="50%" style="stop-color:#3B82F6"/>
+      <stop offset="100%" style="stop-color:#2563EB"/>
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#93C5FD;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#3B82F6;stop-opacity:0"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="15" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background: Rounded square -->
+  <rect width="512" height="512" rx="96" ry="96" fill="url(#bgGrad)"/>
+
+  <!-- Subtle grid pattern suggesting parallel processes -->
+  <g opacity="0.06">
+    <line x1="128" y1="0" x2="128" y2="512" stroke="#60A5FA" stroke-width="1"/>
+    <line x1="256" y1="0" x2="256" y2="512" stroke="#60A5FA" stroke-width="1"/>
+    <line x1="384" y1="0" x2="384" y2="512" stroke="#60A5FA" stroke-width="1"/>
+    <line x1="0" y1="128" x2="512" y2="128" stroke="#60A5FA" stroke-width="1"/>
+    <line x1="0" y1="256" x2="512" y2="256" stroke="#60A5FA" stroke-width="1"/>
+    <line x1="0" y1="384" x2="512" y2="384" stroke="#60A5FA" stroke-width="1"/>
+  </g>
+
+  <!-- Ambient glow behind Z -->
+  <ellipse cx="256" cy="256" rx="140" ry="140" fill="#3B82F6" opacity="0.08" filter="url(#softGlow)"/>
+
+  <!-- Parallel sync lines (background accent) - three parallel diagonals -->
+  <g opacity="0.15">
+    <line x1="120" y1="140" x2="392" y2="372" stroke="#60A5FA" stroke-width="2" stroke-dasharray="4,8"/>
+    <line x1="140" y1="120" x2="412" y2="352" stroke="#60A5FA" stroke-width="1.5" stroke-dasharray="4,8"/>
+    <line x1="100" y1="160" x2="372" y2="392" stroke="#60A5FA" stroke-width="1.5" stroke-dasharray="4,8"/>
+  </g>
+
+  <!-- The Z mark - bold, geometric, precise -->
+  <g filter="url(#glow)">
+    <!-- Top horizontal bar -->
+    <rect x="128" y="128" width="256" height="40" rx="4" fill="url(#zGrad)"/>
+
+    <!-- Diagonal connector - the core sync symbol -->
+    <polygon points="340,168 384,168 172,344 128,344" fill="url(#zGrad)"/>
+
+    <!-- Bottom horizontal bar -->
+    <rect x="128" y="344" width="256" height="40" rx="4" fill="url(#zGrad)"/>
+  </g>
+
+  <!-- Sync dots - representing parallel agents -->
+  <circle cx="152" cy="148" r="6" fill="#93C5FD" opacity="0.9"/>
+  <circle cx="360" cy="148" r="6" fill="#93C5FD" opacity="0.9"/>
+  <circle cx="152" cy="364" r="6" fill="#93C5FD" opacity="0.9"/>
+  <circle cx="360" cy="364" r="6" fill="#93C5FD" opacity="0.9"/>
+
+  <!-- Small accent: two parallel lines near diagonal suggesting data flow -->
+  <line x1="220" y1="230" x2="260" y2="270" stroke="#93C5FD" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+  <line x1="240" y1="220" x2="280" y2="260" stroke="#93C5FD" stroke-width="2" stroke-linecap="round" opacity="0.35"/>
+
+  <!-- Corner accents - suggesting a workspace frame -->
+  <path d="M80,112 L80,80 L112,80" fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
+  <path d="M432,112 L432,80 L400,80" fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
+  <path d="M80,400 L80,432 L112,432" fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
+  <path d="M432,400 L432,432 L400,432" fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
+</svg>
