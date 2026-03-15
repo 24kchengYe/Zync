@@ -92,6 +92,23 @@ Zync is the workspace for this new workflow:
 └─────────────────────────────────────┴───────────────────┘
 ```
 
+## Screenshots
+
+<p align="center">
+  <strong>Claude Code running in Zync</strong><br/>
+  <img src="screenshots/screenshot-run.png" alt="Zync main interface with Claude Code" width="800" />
+</p>
+
+<p align="center">
+  <strong>Built-in Diff Viewer</strong><br/>
+  <img src="screenshots/screenshot-diff.png" alt="Zync diff viewer" width="800" />
+</p>
+
+<p align="center">
+  <strong>Create Workspace with Security Mode</strong><br/>
+  <img src="screenshots/screenshot-create.png" alt="Zync create workspace dialog" width="500" />
+</p>
+
 ## Quick Start
 
 ### Prerequisites
