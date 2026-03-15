@@ -376,8 +376,8 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                     { id: 'oled', label: 'OLED Black', onClick: () => setTheme('oled') },
                   ]}
                   selectedId={theme}
-                  position="bottom-left"
-                  width="full"
+                  position="auto"
+                  width="lg"
                 />
               </SettingsSection>
 
