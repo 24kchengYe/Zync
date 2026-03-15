@@ -1136,11 +1136,17 @@ export function FileEditor({
       label: 'Save and Compile',
       keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS],
       run: () => {
-        // Trigger save via auto-save (which already exists)
-        // Then trigger LaTeX compile if applicable
+        console.log('[LaTeX] Ctrl+S triggered, isLatex:', !!handleLatexCompileRef.current);
         if (handleLatexCompileRef.current) {
           handleLatexCompileRef.current();
         }
+      }
+    });
+
+    // Also prevent browser default Ctrl+S
+    editor.getDomNode()?.addEventListener('keydown', (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
       }
     });
   };
@@ -1248,11 +1254,14 @@ export function FileEditor({
           filePath: result.pdfPath
         });
 
-        if (pdfResult.success) {
-          setLatexPdfDataUrl(`data:application/pdf;base64,${pdfResult.base64}`);
+        if (pdfResult.success && pdfResult.base64) {
+          // Add timestamp to force iframe refresh even if content is the same
+          setLatexPdfDataUrl(`data:application/pdf;base64,${pdfResult.base64}#t=${Date.now()}`);
           setShowLatexPreview(true);
+          console.log('[LaTeX] PDF loaded, base64 length:', pdfResult.base64.length);
         } else {
-          setLatexError(`Failed to read compiled PDF: ${pdfResult.error}`);
+          console.error('[LaTeX] Failed to read PDF:', pdfResult);
+          setLatexError(`Failed to read compiled PDF: ${pdfResult.error || 'No base64 data returned'}`);
         }
       } else {
         setLatexError(result.log || result.error || 'LaTeX compilation failed');
