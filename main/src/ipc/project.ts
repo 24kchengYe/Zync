@@ -133,8 +133,10 @@ export function registerProjectHandlers(ipcMain: IpcMain, services: AppServices)
           commandRunner.exec(`git checkout -b ${branchName}`, actualPath);
           console.log(`[Main] Created and checked out branch: ${branchName}`);
 
+          // Add all existing files so worktrees will have them
+          commandRunner.exec('git add -A', actualPath);
           commandRunner.exec('git commit -m "Initial commit" --allow-empty', actualPath, { env: GIT_ATTRIBUTION_ENV });
-          console.log('[Main] Created initial empty commit');
+          console.log('[Main] Created initial commit with existing files');
         } catch (error) {
           console.error('[Main] Failed to initialize git repository:', error);
           // Continue anyway - let the user handle git setup manually if needed
