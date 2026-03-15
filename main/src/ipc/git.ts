@@ -747,6 +747,25 @@ export function registerGitHandlers(ipcMain: IpcMain, services: AppServices): vo
     }
   });
 
+  // Get git working directory fingerprint (cheap check for frontend caching)
+  ipcMain.handle('sessions:get-diff-fingerprint', async (_event, sessionId: string) => {
+    try {
+      const session = await sessionManager.getSession(sessionId);
+      if (!session || !session.worktreePath) {
+        return { success: false, error: 'Session or worktree path not found' };
+      }
+      const ctx = sessionManager.getProjectContext(sessionId);
+      if (!ctx) {
+        return { success: false, error: 'Project context not found' };
+      }
+      const fingerprint = gitDiffManager.getWorkingDirectoryFingerprint(session.worktreePath, ctx.commandRunner);
+      return { success: true, data: { fingerprint } };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get fingerprint';
+      return { success: false, error: errorMessage };
+    }
+  });
+
   // Git rebase operations
   ipcMain.handle('sessions:check-rebase-conflicts', async (_event, sessionId: string) => {
     try {

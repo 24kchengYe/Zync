@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import type { Logger } from '../utils/logger';
 import type { AnalyticsManager } from './analyticsManager';
 import { CommandRunner } from '../utils/commandRunner';
@@ -37,11 +38,56 @@ export interface GitGraphCommit {
   deletions?: number;
 }
 
+interface DiffCacheEntry {
+  fingerprint: string;
+  result: GitDiffResult;
+  timestamp: number;
+}
+
 export class GitDiffManager {
+  // Cache keyed by worktreePath for working directory diffs
+  private diffCache: Map<string, DiffCacheEntry> = new Map();
+  // Cache keyed by "worktreePath:fromCommit:toCommit" for commit range diffs
+  private commitDiffCache: Map<string, DiffCacheEntry> = new Map();
+  private readonly CACHE_MAX_AGE_MS = 60_000; // Evict stale entries after 60s even if fingerprint matches
+
   constructor(
     private logger?: Logger,
     private analyticsManager?: AnalyticsManager
   ) {}
+
+  /**
+   * Compute a fingerprint for the current working directory state.
+   * Combines HEAD hash + porcelain status so we can detect any change.
+   */
+  getWorkingDirectoryFingerprint(worktreePath: string, commandRunner: CommandRunner): string {
+    try {
+      const head = commandRunner.exec('git rev-parse HEAD', worktreePath).trim();
+      const status = commandRunner.exec('git status --porcelain', worktreePath);
+      return createHash('sha1').update(head + '\n' + status).digest('hex');
+    } catch {
+      // On error return empty string so cache is always missed
+      return '';
+    }
+  }
+
+  /**
+   * Invalidate all caches for a given worktree (call after commit, restore, etc.)
+   */
+  invalidateCache(worktreePath?: string): void {
+    if (worktreePath) {
+      this.diffCache.delete(worktreePath);
+      // Also clear commit diff entries for this worktree
+      for (const key of this.commitDiffCache.keys()) {
+        if (key.startsWith(worktreePath + ':')) {
+          this.commitDiffCache.delete(key);
+        }
+      }
+    } else {
+      this.diffCache.clear();
+      this.commitDiffCache.clear();
+    }
+  }
 
   /**
    * Capture git diff for a worktree directory
@@ -50,6 +96,14 @@ export class GitDiffManager {
     try {
       console.log(`captureWorkingDirectoryDiff called for: ${worktreePath}`);
       this.logger?.verbose(`Capturing git diff in ${worktreePath}`);
+
+      // Check cache: compare fingerprint to detect if anything changed
+      const fingerprint = this.getWorkingDirectoryFingerprint(worktreePath, commandRunner);
+      const cached = this.diffCache.get(worktreePath);
+      if (fingerprint && cached && cached.fingerprint === fingerprint && (Date.now() - cached.timestamp) < this.CACHE_MAX_AGE_MS) {
+        console.log(`[DiffCache] HIT for working directory diff in ${worktreePath}`);
+        return cached.result;
+      }
 
       // Get current commit hash
       const beforeHash = this.getCurrentCommitHash(worktreePath, commandRunner);
@@ -67,13 +121,21 @@ export class GitDiffManager {
       this.logger?.verbose(`Captured diff: ${stats.filesChanged} files, +${stats.additions} -${stats.deletions}`);
       console.log(`Diff stats:`, stats);
 
-      return {
+      const result: GitDiffResult = {
         diff,
         stats,
         changedFiles,
         beforeHash,
         afterHash: undefined // No after hash for working directory changes
       };
+
+      // Store in cache
+      if (fingerprint) {
+        this.diffCache.set(worktreePath, { fingerprint, result, timestamp: Date.now() });
+        console.log(`[DiffCache] STORED working directory diff for ${worktreePath}`);
+      }
+
+      return result;
     } catch (error) {
       this.logger?.error(`Failed to capture git diff in ${worktreePath}:`, error instanceof Error ? error : undefined);
       throw error;
@@ -88,6 +150,23 @@ export class GitDiffManager {
       const to = toCommit || 'HEAD';
       this.logger?.verbose(`Capturing git diff in ${worktreePath} from ${fromCommit} to ${to}`);
 
+      // For commit-to-commit diffs (not involving HEAD/working dir), result is immutable -- cache by hashes
+      const cacheKey = `${worktreePath}:${fromCommit}:${to}`;
+      const cached = this.commitDiffCache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp) < this.CACHE_MAX_AGE_MS) {
+        // For HEAD references, verify fingerprint still matches
+        if (to === 'HEAD') {
+          const fingerprint = this.getWorkingDirectoryFingerprint(worktreePath, commandRunner);
+          if (fingerprint && cached.fingerprint === fingerprint) {
+            console.log(`[DiffCache] HIT for commit diff ${fromCommit}..${to}`);
+            return cached.result;
+          }
+        } else {
+          console.log(`[DiffCache] HIT for commit diff ${fromCommit}..${to}`);
+          return cached.result;
+        }
+      }
+
       // Get diff between commits
       const diff = this.getGitCommitDiff(worktreePath, fromCommit, to, commandRunner);
 
@@ -97,13 +176,21 @@ export class GitDiffManager {
       // Get diff stats between commits
       const stats = this.getCommitDiffStats(worktreePath, fromCommit, to, commandRunner);
 
-      return {
+      const result: GitDiffResult = {
         diff,
         stats,
         changedFiles,
         beforeHash: fromCommit,
         afterHash: to === 'HEAD' ? this.getCurrentCommitHash(worktreePath, commandRunner) : to
       };
+
+      // Store in cache
+      const fingerprint = to === 'HEAD'
+        ? this.getWorkingDirectoryFingerprint(worktreePath, commandRunner)
+        : `${fromCommit}:${to}`;
+      this.commitDiffCache.set(cacheKey, { fingerprint, result, timestamp: Date.now() });
+
+      return result;
     } catch (error) {
       this.logger?.error(`Failed to capture commit diff in ${worktreePath}:`, error instanceof Error ? error : undefined);
       throw error;
@@ -405,6 +492,15 @@ export class GitDiffManager {
   }
 
   async getCombinedDiff(worktreePath: string, mainBranch: string, commandRunner: CommandRunner): Promise<GitDiffResult> {
+    // Check cache using fingerprint
+    const cacheKey = `${worktreePath}:origin/${mainBranch}...HEAD`;
+    const fingerprint = this.getWorkingDirectoryFingerprint(worktreePath, commandRunner);
+    const cached = this.commitDiffCache.get(cacheKey);
+    if (fingerprint && cached && cached.fingerprint === fingerprint && (Date.now() - cached.timestamp) < this.CACHE_MAX_AGE_MS) {
+      console.log(`[DiffCache] HIT for combined diff in ${worktreePath}`);
+      return cached.result;
+    }
+
     // Get diff against main branch
     try {
 
@@ -419,13 +515,20 @@ export class GitDiffManager {
 
       const stats = this.parseDiffStats(statsOutput);
 
-      return {
+      const result: GitDiffResult = {
         diff,
         stats,
         changedFiles,
         beforeHash: `origin/${mainBranch}`,
         afterHash: 'HEAD'
       };
+
+      // Store in cache
+      if (fingerprint) {
+        this.commitDiffCache.set(cacheKey, { fingerprint, result, timestamp: Date.now() });
+      }
+
+      return result;
     } catch (error) {
       this.logger?.warn(`Could not get combined diff in ${worktreePath}:`, error instanceof Error ? error : undefined);
       // Fallback to working directory diff

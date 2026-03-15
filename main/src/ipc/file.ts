@@ -65,7 +65,7 @@ interface FileSearchRequest {
 }
 
 export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): void {
-  const { sessionManager, databaseService, gitStatusManager, configManager } = services;
+  const { sessionManager, databaseService, gitStatusManager, gitDiffManager, configManager } = services;
 
   // Read file contents from a session's worktree
   ipcMain.handle('file:read', async (_, request: FileReadRequest) => {
@@ -252,7 +252,8 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
           env: { ...process.env, ...GIT_ATTRIBUTION_ENV }
         }, commandRunner.wslContext);
 
-        // Refresh git status for this session after commit
+        // Invalidate diff cache and refresh git status after commit
+        gitDiffManager.invalidateCache(session.worktreePath);
         try {
           await gitStatusManager.refreshSessionGitStatus(request.sessionId, false);
         } catch (error) {
@@ -280,7 +281,8 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
               env: { ...process.env, ...GIT_ATTRIBUTION_ENV }
             }, commandRunner.wslContext);
 
-            // Refresh git status for this session after commit
+            // Invalidate diff cache and refresh git status after commit (retry)
+            gitDiffManager.invalidateCache(session.worktreePath);
             try {
               await gitStatusManager.refreshSessionGitStatus(request.sessionId, false);
             } catch (error) {
@@ -325,6 +327,9 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
         const command = `git revert ${request.commitHash} --no-edit`;
         await commandRunner.execAsync(command, session.worktreePath);
 
+        // Invalidate diff cache after revert
+        gitDiffManager.invalidateCache(session.worktreePath);
+
         return { success: true };
       } catch (error: unknown) {
         throw new Error(`Git revert failed: ${error instanceof Error ? error.message : error}`);
@@ -356,6 +361,9 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
 
         // Clean untracked files
         await commandRunner.execAsync('git clean -fd', session.worktreePath);
+
+        // Invalidate diff cache after restore
+        gitDiffManager.invalidateCache(session.worktreePath);
 
         return { success: true };
       } catch (error: unknown) {
