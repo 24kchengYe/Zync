@@ -1241,6 +1241,17 @@ export function FileEditor({
     setLatexPdfDataUrl(null);
 
     try {
+      // Force save before compiling so xelatex sees the latest content
+      if (fileContent !== originalContent) {
+        await window.electronAPI.invoke('file:write', {
+          sessionId,
+          filePath: selectedFile.path,
+          content: fileContent
+        });
+        setOriginalContent(fileContent);
+        console.log('[LaTeX] File saved before compilation');
+      }
+
       const result = await window.electronAPI.invoke('file:compile-latex', {
         sessionId,
         filePath: selectedFile.path
@@ -1273,7 +1284,7 @@ export function FileEditor({
     } finally {
       setLatexCompiling(false);
     }
-  }, [selectedFile, isLatexFile, sessionId]);
+  }, [selectedFile, isLatexFile, sessionId, fileContent, originalContent]);
 
   // Keep ref in sync for Ctrl+S access
   useEffect(() => {
