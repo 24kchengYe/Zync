@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Editor from '@monaco-editor/react';
 import type * as monaco from 'monaco-editor';
-import { ChevronRight, ChevronDown, File, Folder, RefreshCw, Plus, Trash2, FolderPlus, Search, X, Eye, Code, Copy, FolderOpen, Play, Loader2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder, RefreshCw, Plus, Trash2, FolderPlus, Search, X, Eye, Code, Copy, FolderOpen, Play, Loader2, Pencil, ClipboardCopy, FilePlus } from 'lucide-react';
 import { useTree } from '@headless-tree/react';
 import { asyncDataLoaderFeature, selectionFeature, hotkeysCoreFeature, expandAllFeature } from '@headless-tree/core';
 import type { ItemInstance } from '@headless-tree/core';
@@ -13,7 +14,7 @@ import { NotebookPreview } from './NotebookPreview';
 import { useResizablePanel } from '../../../hooks/useResizablePanel';
 import { ExplorerPanelState } from '../../../../../shared/types/panels';
 import { isMac, isWindows } from '../../../utils/platformUtils';
-import { TerminalPopover, PopoverButton } from '../../terminal/TerminalPopover';
+// TerminalPopover no longer used — replaced by FileTreeContextMenu
 
 interface FileItem {
   name: string;
@@ -24,6 +25,274 @@ interface FileItem {
 }
 
 const ROOT_ID = '\0root';
+
+// Common file extensions for the "New File" submenu
+const NEW_FILE_EXTENSIONS = [
+  { ext: '.py', label: 'Python (.py)' },
+  { ext: '.js', label: 'JavaScript (.js)' },
+  { ext: '.ts', label: 'TypeScript (.ts)' },
+  { ext: '.txt', label: 'Text (.txt)' },
+  { ext: '.md', label: 'Markdown (.md)' },
+  { ext: '.tex', label: 'LaTeX (.tex)' },
+  { ext: '.json', label: 'JSON (.json)' },
+  { ext: '.csv', label: 'CSV (.csv)' },
+  { ext: '.html', label: 'HTML (.html)' },
+  { ext: '.css', label: 'CSS (.css)' },
+];
+
+interface FileTreeContextMenuProps {
+  x: number;
+  y: number;
+  file: FileItem | null;
+  revealLabel: string;
+  showNewFileSubmenu: boolean;
+  onClose: () => void;
+  onRename: () => void;
+  onDelete: (file: FileItem) => void;
+  onCopyPath: () => void;
+  onCopyAbsolutePath: () => void;
+  onReveal: () => void;
+  onNewFile: (ext?: string) => void;
+  onNewFolder: () => void;
+  onRefresh: () => void;
+  onToggleSubmenu: (show: boolean) => void;
+}
+
+function FileTreeContextMenu({
+  x,
+  y,
+  file,
+  revealLabel,
+  showNewFileSubmenu,
+  onClose,
+  onRename,
+  onDelete,
+  onCopyPath,
+  onCopyAbsolutePath,
+  onReveal,
+  onNewFile,
+  onNewFolder,
+  onRefresh,
+  onToggleSubmenu,
+}: FileTreeContextMenuProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const submenuRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [submenuPosition, setSubmenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const submenuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Position the main menu
+  useLayoutEffect(() => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const vH = window.innerHeight;
+    const vW = window.innerWidth;
+
+    let top = y;
+    let left = x;
+
+    if (top + rect.height > vH - 10) top = y - rect.height;
+    if (left + rect.width > vW - 10) left = vW - rect.width - 10;
+    if (left < 10) left = 10;
+    if (top < 10) top = 10;
+
+    setPosition({ top, left });
+  }, [x, y]);
+
+  // Close on click outside, escape, or scroll
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        ref.current && !ref.current.contains(e.target as Node) &&
+        (!submenuRef.current || !submenuRef.current.contains(e.target as Node))
+      ) {
+        onClose();
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    const handleScroll = () => onClose();
+
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+      document.addEventListener('scroll', handleScroll, true);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [onClose]);
+
+  // Calculate submenu position when it opens
+  useLayoutEffect(() => {
+    if (!showNewFileSubmenu || !ref.current) {
+      setSubmenuPosition(null);
+      return;
+    }
+    const menuRect = ref.current.getBoundingClientRect();
+    const vW = window.innerWidth;
+    const vH = window.innerHeight;
+    // Find the "New File" item to anchor the submenu
+    const newFileItem = ref.current.querySelector('[data-menu-item="new-file"]');
+    const itemRect = newFileItem?.getBoundingClientRect();
+    const itemTop = itemRect?.top ?? menuRect.top;
+
+    // Estimate submenu height
+    const submenuHeight = NEW_FILE_EXTENSIONS.length * 32 + 40; // items + custom option
+    let left = menuRect.right + 2;
+    let top = itemTop;
+
+    // Flip left if not enough space on right
+    if (left + 200 > vW - 10) {
+      left = menuRect.left - 202;
+    }
+    // Flip up if not enough space below
+    if (top + submenuHeight > vH - 10) {
+      top = vH - submenuHeight - 10;
+    }
+    if (top < 10) top = 10;
+
+    setSubmenuPosition({ top, left });
+  }, [showNewFileSubmenu]);
+
+  const handleNewFileHover = (entering: boolean) => {
+    if (submenuTimeoutRef.current) {
+      clearTimeout(submenuTimeoutRef.current);
+      submenuTimeoutRef.current = null;
+    }
+    if (entering) {
+      submenuTimeoutRef.current = setTimeout(() => onToggleSubmenu(true), 150);
+    } else {
+      submenuTimeoutRef.current = setTimeout(() => onToggleSubmenu(false), 300);
+    }
+  };
+
+  const isFolder = file?.isDirectory ?? false;
+  const isEmptyArea = file === null;
+
+  const menuItemClass = 'w-full px-3 py-1.5 text-left text-sm transition-colors duration-75 flex items-center gap-2 hover:bg-surface-hover text-text-primary disabled:opacity-40 disabled:cursor-not-allowed';
+  const separatorClass = 'border-t border-border-secondary my-1';
+
+  return (
+    <>
+      <div
+        ref={ref}
+        className="fixed z-[10001] bg-surface-primary border border-border-secondary rounded-lg shadow-dropdown-elevated py-1 min-w-[200px]"
+        style={{ left: position.left, top: position.top }}
+      >
+        {/* New File — shown for folders and empty area */}
+        {(isFolder || isEmptyArea) && (
+          <button
+            data-menu-item="new-file"
+            className={menuItemClass}
+            onMouseEnter={() => handleNewFileHover(true)}
+            onMouseLeave={() => handleNewFileHover(false)}
+            onClick={() => onNewFile()}
+          >
+            <FilePlus className="w-4 h-4 text-text-tertiary" />
+            New File
+            <ChevronRight className="w-3 h-3 text-text-tertiary ml-auto" />
+          </button>
+        )}
+
+        {/* New Folder — shown for folders and empty area */}
+        {(isFolder || isEmptyArea) && (
+          <button className={menuItemClass} onClick={onNewFolder}>
+            <FolderPlus className="w-4 h-4 text-text-tertiary" />
+            New Folder
+          </button>
+        )}
+
+        {(isFolder || isEmptyArea) && !isEmptyArea && <div className={separatorClass} />}
+
+        {/* Rename — shown for files and folders */}
+        {!isEmptyArea && (
+          <button className={menuItemClass} onClick={onRename}>
+            <Pencil className="w-4 h-4 text-text-tertiary" />
+            Rename
+          </button>
+        )}
+
+        {/* Delete — shown for files and folders */}
+        {!isEmptyArea && (
+          <button className={`${menuItemClass} hover:!text-status-error`} onClick={() => file && onDelete(file)}>
+            <Trash2 className="w-4 h-4 text-status-error" />
+            Delete
+          </button>
+        )}
+
+        {!isEmptyArea && <div className={separatorClass} />}
+
+        {/* Copy Path — shown for files and folders */}
+        {!isEmptyArea && (
+          <button className={menuItemClass} onClick={onCopyPath}>
+            <Copy className="w-4 h-4 text-text-tertiary" />
+            Copy Path
+          </button>
+        )}
+
+        {/* Copy Absolute Path — shown for files and folders */}
+        {!isEmptyArea && (
+          <button className={menuItemClass} onClick={onCopyAbsolutePath}>
+            <ClipboardCopy className="w-4 h-4 text-text-tertiary" />
+            Copy Absolute Path
+          </button>
+        )}
+
+        {/* Reveal in file manager — shown for files and folders */}
+        {!isEmptyArea && (
+          <button className={menuItemClass} onClick={onReveal}>
+            <FolderOpen className="w-4 h-4 text-text-tertiary" />
+            {revealLabel}
+          </button>
+        )}
+
+        {/* Refresh — shown for empty area */}
+        {isEmptyArea && (
+          <>
+            <div className={separatorClass} />
+            <button className={menuItemClass} onClick={onRefresh}>
+              <RefreshCw className="w-4 h-4 text-text-tertiary" />
+              Refresh
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Submenu for New File types */}
+      {showNewFileSubmenu && submenuPosition && (
+        <div
+          ref={submenuRef}
+          className="fixed z-[10002] bg-surface-primary border border-border-secondary rounded-lg shadow-dropdown-elevated py-1 min-w-[180px]"
+          style={{ left: submenuPosition.left, top: submenuPosition.top }}
+          onMouseEnter={() => handleNewFileHover(true)}
+          onMouseLeave={() => handleNewFileHover(false)}
+        >
+          {NEW_FILE_EXTENSIONS.map(({ ext, label }) => (
+            <button
+              key={ext}
+              className={menuItemClass}
+              onClick={() => onNewFile(ext)}
+            >
+              <File className="w-4 h-4 text-text-tertiary" />
+              {label}
+            </button>
+          ))}
+          <div className={separatorClass} />
+          <button className={menuItemClass} onClick={() => onNewFile()}>
+            <Plus className="w-4 h-4 text-text-tertiary" />
+            Custom name...
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
 
 interface HeadlessFileTreeProps {
   sessionId: string;
@@ -62,12 +331,18 @@ function HeadlessFileTree({
   const [newItemParentPath, setNewItemParentPath] = useState('');
   const newItemInputRef = useRef<HTMLInputElement>(null);
 
-  // Context menu state
+  // Context menu state — file is null when right-clicking empty area
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
-    file: FileItem;
+    file: FileItem | null;
   } | null>(null);
+  const [showNewFileSubmenu, setShowNewFileSubmenu] = useState(false);
+
+  // Inline rename state
+  const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   // Platform-adaptive label
   const revealLabel = isMac() ? 'Reveal in Finder' : isWindows() ? 'Show in Explorer' : 'Show in File Manager';
@@ -187,8 +462,18 @@ function HeadlessFileTree({
   }, [searchQuery]);
 
   // Context menu handlers
-  const handleCopyPath = useCallback(async () => {
-    if (!contextMenu) return;
+  const handleCopyRelativePath = useCallback(async () => {
+    if (!contextMenu?.file) return;
+    try {
+      await navigator.clipboard.writeText(contextMenu.file.path);
+    } catch (err) {
+      console.error('Failed to copy relative path:', err);
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleCopyAbsolutePath = useCallback(async () => {
+    if (!contextMenu?.file) return;
     try {
       const result = await window.electronAPI.invoke('file:resolveAbsolutePath', {
         sessionId,
@@ -198,13 +483,13 @@ function HeadlessFileTree({
         await navigator.clipboard.writeText(result.path);
       }
     } catch (err) {
-      console.error('Failed to copy path:', err);
+      console.error('Failed to copy absolute path:', err);
     }
     setContextMenu(null);
   }, [contextMenu, sessionId]);
 
   const handleRevealInFileManager = useCallback(async () => {
-    if (!contextMenu) return;
+    if (!contextMenu?.file) return;
     try {
       await window.electronAPI.invoke('file:showInFolder', {
         sessionId,
@@ -215,6 +500,107 @@ function HeadlessFileTree({
     }
     setContextMenu(null);
   }, [contextMenu, sessionId]);
+
+  // Start inline rename
+  const handleStartRename = useCallback(() => {
+    if (!contextMenu?.file) return;
+    const file = contextMenu.file;
+    setRenamingPath(file.path);
+    setRenameValue(file.name);
+    setContextMenu(null);
+    // Focus will be handled by the effect below
+  }, [contextMenu]);
+
+  // Commit rename
+  const handleCommitRename = useCallback(async () => {
+    if (!renamingPath || !renameValue.trim()) {
+      setRenamingPath(null);
+      setRenameValue('');
+      return;
+    }
+
+    const oldName = renamingPath.split('/').pop() || '';
+    if (renameValue.trim() === oldName) {
+      setRenamingPath(null);
+      setRenameValue('');
+      return;
+    }
+
+    const parentPath = renamingPath.includes('/')
+      ? renamingPath.substring(0, renamingPath.lastIndexOf('/'))
+      : '';
+    const newPath = parentPath ? `${parentPath}/${renameValue.trim()}` : renameValue.trim();
+
+    try {
+      const result = await window.electronAPI.invoke('file:rename', {
+        sessionId,
+        oldPath: renamingPath,
+        newPath,
+      });
+
+      if (result.success) {
+        // Invalidate parent cache
+        filesCacheRef.current.delete(parentPath);
+        const parentItemId = parentPath || ROOT_ID;
+        tree.getItemInstance(parentItemId)?.invalidateChildrenIds();
+
+        // If the renamed file was selected, update selection
+        if (selectedPath === renamingPath) {
+          onFileSelect({
+            name: renameValue.trim(),
+            path: newPath,
+            isDirectory: false,
+          });
+        }
+      } else {
+        setError(`Failed to rename: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Failed to rename:', err);
+      setError(err instanceof Error ? err.message : 'Failed to rename');
+    }
+
+    setRenamingPath(null);
+    setRenameValue('');
+  }, [renamingPath, renameValue, sessionId, selectedPath, onFileSelect, tree]);
+
+  // Focus rename input when it appears
+  useEffect(() => {
+    if (renamingPath && renameInputRef.current) {
+      const input = renameInputRef.current;
+      input.focus();
+      // Select just the name part (not extension) for files
+      const dotIndex = renameValue.lastIndexOf('.');
+      if (dotIndex > 0) {
+        input.setSelectionRange(0, dotIndex);
+      } else {
+        input.select();
+      }
+    }
+  }, [renamingPath]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Context menu: new file with specific extension
+  const handleContextNewFile = useCallback((ext?: string) => {
+    const parentPath = contextMenu?.file
+      ? (contextMenu.file.isDirectory ? contextMenu.file.path : (contextMenu.file.path.includes('/') ? contextMenu.file.path.substring(0, contextMenu.file.path.lastIndexOf('/')) : ''))
+      : '';
+    setNewItemParentPath(parentPath);
+    setNewItemName(ext ? `untitled${ext}` : '');
+    setShowNewItemDialog('file');
+    setContextMenu(null);
+    setShowNewFileSubmenu(false);
+  }, [contextMenu]);
+
+  // Context menu: new folder
+  const handleContextNewFolder = useCallback(() => {
+    const parentPath = contextMenu?.file
+      ? (contextMenu.file.isDirectory ? contextMenu.file.path : (contextMenu.file.path.includes('/') ? contextMenu.file.path.substring(0, contextMenu.file.path.lastIndexOf('/')) : ''))
+      : '';
+    setNewItemParentPath(parentPath);
+    setNewItemName('');
+    setShowNewItemDialog('folder');
+    setContextMenu(null);
+  }, [contextMenu]);
 
   // Delete handler
   const handleDelete = useCallback(async (file: FileItem) => {
@@ -270,13 +656,17 @@ function HeadlessFileTree({
       const relativePath = newItemParentPath
         ? `${newItemParentPath}/${newItemName}`
         : newItemName;
-      const filePath = isFolder ? `${relativePath}/.gitkeep` : relativePath;
 
-      const result = await window.electronAPI.invoke('file:write', {
-        sessionId,
-        filePath,
-        content: '',
-      });
+      const result = isFolder
+        ? await window.electronAPI.invoke('file:create-folder', {
+            sessionId,
+            folderPath: relativePath,
+          })
+        : await window.electronAPI.invoke('file:write', {
+            sessionId,
+            filePath: relativePath,
+            content: '',
+          });
 
       if (result.success) {
         filesCacheRef.current.delete(newItemParentPath);
@@ -376,8 +766,14 @@ function HeadlessFileTree({
         setShowSearch(prev => !prev);
       }
       if (e.key === 'Escape') {
+        if (renamingPath) {
+          setRenamingPath(null);
+          setRenameValue('');
+          return;
+        }
         if (contextMenu) {
           setContextMenu(null);
+          setShowNewFileSubmenu(false);
           return;
         }
         if (showNewItemDialog) {
@@ -394,7 +790,7 @@ function HeadlessFileTree({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchQuery, showNewItemDialog, contextMenu]);
+  }, [searchQuery, showNewItemDialog, contextMenu, renamingPath]);
 
   return (
     <div className="h-full flex flex-col">
@@ -536,6 +932,13 @@ function HeadlessFileTree({
       <div
         {...tree.getContainerProps()}
         className={`overflow-auto outline-none ${searchQuery ? 'hidden' : 'flex-1'}`}
+        onContextMenu={(e) => {
+          // Only fire for empty area (not bubbled from items)
+          if (e.target === e.currentTarget) {
+            e.preventDefault();
+            setContextMenu({ x: e.clientX, y: e.clientY, file: null });
+          }
+        }}
       >
         {tree.getItems().map((item: ItemInstance<FileItem>) => {
           const data = item.getItemData();
@@ -545,6 +948,7 @@ function HeadlessFileTree({
           const level = item.getItemMeta().level;
           const isExpanded = item.isExpanded();
           const isSelected = selectedPath === data.path;
+          const isRenaming = renamingPath === data.path;
 
           return (
             <div
@@ -556,6 +960,7 @@ function HeadlessFileTree({
               style={{ paddingLeft: `${level * 16 + 8}px` }}
               onClick={(e) => {
                 e.stopPropagation();
+                if (isRenaming) return;
                 if (isFolder) {
                   if (isExpanded) item.collapse();
                   else item.expand();
@@ -564,6 +969,7 @@ function HeadlessFileTree({
                 }
               }}
               onKeyDown={(e) => {
+                if (isRenaming) return;
                 if (e.key === 'Enter') {
                   e.preventDefault();
                   if (isFolder) {
@@ -572,6 +978,12 @@ function HeadlessFileTree({
                   } else {
                     onFileSelect(data);
                   }
+                }
+                // F2 to rename
+                if (e.key === 'F2') {
+                  e.preventDefault();
+                  setRenamingPath(data.path);
+                  setRenameValue(data.name);
                 }
               }}
               onDoubleClick={(e) => e.preventDefault()}
@@ -596,8 +1008,32 @@ function HeadlessFileTree({
                   <File className="w-4 h-4 mr-2 text-text-tertiary" />
                 </>
               )}
-              <span className="flex-1 text-sm truncate text-text-primary">{data.name}</span>
-              {isFolder && (
+              {isRenaming ? (
+                <input
+                  ref={renameInputRef}
+                  type="text"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleCommitRename();
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      setRenamingPath(null);
+                      setRenameValue('');
+                    }
+                  }}
+                  onBlur={handleCommitRename}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex-1 text-sm bg-surface-primary border border-interactive rounded px-1 py-0 text-text-primary outline-none min-w-0"
+                />
+              ) : (
+                <span className="flex-1 text-sm truncate text-text-primary">{data.name}</span>
+              )}
+              {!isRenaming && isFolder && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -610,39 +1046,43 @@ function HeadlessFileTree({
                   <RefreshCw className="w-3 h-3" />
                 </button>
               )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(data);
-                }}
-                className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 p-1 hover:bg-surface-hover rounded ml-1"
-                title={`Delete ${isFolder ? 'folder' : 'file'}`}
-              >
-                <Trash2 className="w-3 h-3 text-status-error" />
-              </button>
+              {!isRenaming && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(data);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 p-1 hover:bg-surface-hover rounded ml-1"
+                  title={`Delete ${isFolder ? 'folder' : 'file'}`}
+                >
+                  <Trash2 className="w-3 h-3 text-status-error" />
+                </button>
+              )}
             </div>
           );
         })}
       </div>
-      <TerminalPopover
-        visible={!!contextMenu}
-        x={contextMenu?.x ?? 0}
-        y={contextMenu?.y ?? 0}
-        onClose={() => setContextMenu(null)}
-      >
-        <PopoverButton onClick={handleCopyPath}>
-          <span className="flex items-center gap-2">
-            <Copy className="w-4 h-4" />
-            Copy Path
-          </span>
-        </PopoverButton>
-        <PopoverButton onClick={handleRevealInFileManager}>
-          <span className="flex items-center gap-2">
-            <FolderOpen className="w-4 h-4" />
-            {revealLabel}
-          </span>
-        </PopoverButton>
-      </TerminalPopover>
+      {/* Custom context menu rendered via portal */}
+      {contextMenu && createPortal(
+        <FileTreeContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          file={contextMenu.file}
+          revealLabel={revealLabel}
+          showNewFileSubmenu={showNewFileSubmenu}
+          onClose={() => { setContextMenu(null); setShowNewFileSubmenu(false); }}
+          onRename={handleStartRename}
+          onDelete={(file) => { handleDelete(file); setContextMenu(null); }}
+          onCopyPath={handleCopyRelativePath}
+          onCopyAbsolutePath={handleCopyAbsolutePath}
+          onReveal={handleRevealInFileManager}
+          onNewFile={handleContextNewFile}
+          onNewFolder={handleContextNewFolder}
+          onRefresh={() => { handleRefreshAll(); setContextMenu(null); }}
+          onToggleSubmenu={setShowNewFileSubmenu}
+        />,
+        document.body
+      )}
     </div>
   );
 }

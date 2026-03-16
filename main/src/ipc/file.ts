@@ -603,6 +603,127 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
     }
   });
 
+  // Rename a file or directory in a session's worktree
+  ipcMain.handle('file:rename', async (_, request: { sessionId: string; oldPath: string; newPath: string }) => {
+    try {
+      const session = sessionManager.getSession(request.sessionId);
+      if (!session) {
+        throw new Error(`Session not found: ${request.sessionId}`);
+      }
+
+      const ctx = sessionManager.getProjectContext(request.sessionId);
+      if (!ctx) throw new Error('Project not found for session');
+      const { pathResolver } = ctx;
+
+      // Validate old path
+      const normalizedOldPath = path.normalize(request.oldPath);
+      if (normalizedOldPath.startsWith('..') || path.isAbsolute(normalizedOldPath)) {
+        throw new Error('Invalid old file path');
+      }
+
+      // Validate new path
+      const normalizedNewPath = path.normalize(request.newPath);
+      if (normalizedNewPath.startsWith('..') || path.isAbsolute(normalizedNewPath)) {
+        throw new Error('Invalid new file path');
+      }
+
+      const basePath = pathResolver.toFileSystem(session.worktreePath);
+      const fullOldPath = path.join(basePath, normalizedOldPath);
+      const fullNewPath = path.join(basePath, normalizedNewPath);
+
+      // Verify both paths are within the worktree
+      if (!await pathResolver.isWithin(basePath, fullOldPath)) {
+        throw new Error('Old file path is outside worktree');
+      }
+      if (!await pathResolver.isWithin(basePath, fullNewPath)) {
+        throw new Error('New file path is outside worktree');
+      }
+
+      // Check that the source exists
+      try {
+        await fs.access(fullOldPath);
+      } catch {
+        throw new Error(`File not found: ${normalizedOldPath}`);
+      }
+
+      // Check that the target doesn't already exist
+      try {
+        await fs.access(fullNewPath);
+        throw new Error(`Target already exists: ${normalizedNewPath}`);
+      } catch (err) {
+        // If it's our own "already exists" error, re-throw
+        if (err instanceof Error && err.message.startsWith('Target already exists')) {
+          throw err;
+        }
+        // Otherwise (ENOENT) is expected — target doesn't exist, which is good
+      }
+
+      // Ensure the parent directory of the target exists
+      const targetDir = path.dirname(fullNewPath);
+      await fs.mkdir(targetDir, { recursive: true });
+
+      // Perform the rename
+      await fs.rename(fullOldPath, fullNewPath);
+
+      // Notify frontend to refresh file tree
+      const { BrowserWindow } = require('electron');
+      const win = BrowserWindow.getAllWindows()[0];
+      win?.webContents.send('file:changed', { sessionId: request.sessionId, type: 'rename', oldPath: normalizedOldPath, newPath: normalizedNewPath });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error renaming file:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  });
+
+  // Create a new directory in a session's worktree
+  ipcMain.handle('file:create-folder', async (_, request: { sessionId: string; folderPath: string }) => {
+    try {
+      const session = sessionManager.getSession(request.sessionId);
+      if (!session) {
+        throw new Error(`Session not found: ${request.sessionId}`);
+      }
+
+      const ctx = sessionManager.getProjectContext(request.sessionId);
+      if (!ctx) throw new Error('Project not found for session');
+      const { pathResolver } = ctx;
+
+      // Validate path
+      const normalizedPath = path.normalize(request.folderPath);
+      if (normalizedPath.startsWith('..') || path.isAbsolute(normalizedPath)) {
+        throw new Error('Invalid folder path');
+      }
+
+      const basePath = pathResolver.toFileSystem(session.worktreePath);
+      const fullPath = path.join(basePath, normalizedPath);
+
+      // Verify the path is within the worktree
+      if (!await pathResolver.isWithin(basePath, fullPath)) {
+        throw new Error('Folder path is outside worktree');
+      }
+
+      // Create the directory (recursive to handle nested paths)
+      await fs.mkdir(fullPath, { recursive: true });
+
+      // Notify frontend to refresh file tree
+      const { BrowserWindow } = require('electron');
+      const win = BrowserWindow.getAllWindows()[0];
+      win?.webContents.send('file:changed', { sessionId: request.sessionId, type: 'create', path: normalizedPath });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  });
+
   // Search for files matching a pattern
   ipcMain.handle('file:search', async (_, request: FileSearchRequest) => {
     try {
