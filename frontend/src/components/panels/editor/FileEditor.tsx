@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } fr
 import { createPortal } from 'react-dom';
 import Editor from '@monaco-editor/react';
 import type * as monaco from 'monaco-editor';
-import { ChevronRight, ChevronDown, File, Folder, RefreshCw, Plus, Trash2, FolderPlus, Search, X, Eye, Code, Copy, FolderOpen, Play, Loader2, Pencil, ClipboardCopy, FilePlus } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder, RefreshCw, Plus, Trash2, FolderPlus, Search, X, Eye, Code, Copy, FolderOpen, Play, Loader2, Pencil, ClipboardCopy, FilePlus, Package } from 'lucide-react';
 import { useTree } from '@headless-tree/react';
 import { asyncDataLoaderFeature, selectionFeature, hotkeysCoreFeature, expandAllFeature } from '@headless-tree/core';
 import type { ItemInstance } from '@headless-tree/core';
@@ -1216,6 +1216,14 @@ export function FileEditor({
   const [creatingVenv, setCreatingVenv] = useState(false);
   const createVenvInputRef = useRef<HTMLInputElement>(null);
 
+  // Package list dialog state
+  const [showPackagesDialog, setShowPackagesDialog] = useState(false);
+  const [packagesLoading, setPackagesLoading] = useState(false);
+  const [packagesList, setPackagesList] = useState<Array<{ name: string; version: string }>>([]);
+  const [packagesError, setPackagesError] = useState<string | null>(null);
+  const [packagesFilter, setPackagesFilter] = useState('');
+  const packagesFilterRef = useRef<HTMLInputElement>(null);
+
   const { theme } = useTheme();
   const isDarkMode = theme !== 'light';
   const hasUnsavedChanges = fileContent !== originalContent;
@@ -1963,6 +1971,35 @@ export function FileEditor({
     }
   }, [showCreateVenvDialog]);
 
+  // Fetch installed packages for the selected Python environment
+  const handleViewPackages = useCallback(async () => {
+    if (!selectedPythonEnv) return;
+    setShowPackagesDialog(true);
+    setPackagesLoading(true);
+    setPackagesError(null);
+    setPackagesList([]);
+    setPackagesFilter('');
+    try {
+      const result = await window.electronAPI.invoke('file:list-python-packages', { pythonPath: selectedPythonEnv }) as { success: boolean; packages?: Array<{ name: string; version: string }>; error?: string };
+      if (result.success && result.packages) {
+        setPackagesList(result.packages);
+      } else {
+        setPackagesError(result.error || 'Failed to list packages');
+      }
+    } catch (err) {
+      setPackagesError(err instanceof Error ? err.message : 'Failed to list packages');
+    } finally {
+      setPackagesLoading(false);
+    }
+  }, [selectedPythonEnv]);
+
+  // Focus packages filter input when dialog opens
+  useEffect(() => {
+    if (showPackagesDialog && !packagesLoading && packagesFilterRef.current) {
+      packagesFilterRef.current.focus();
+    }
+  }, [showPackagesDialog, packagesLoading]);
+
   // Load initial file if provided
   useEffect(() => {
     if (initialFilePath && !selectedFile) {
@@ -2279,6 +2316,12 @@ export function FileEditor({
                           label="Create Virtual Environment..."
                           onClick={() => setShowCreateVenvDialog(true)}
                         />
+                        <DropdownMenuItem
+                          icon={Package}
+                          label="View Installed Packages"
+                          onClick={handleViewPackages}
+                          disabled={!selectedPythonEnv}
+                        />
                       </div>
                     }
                   />
@@ -2559,6 +2602,116 @@ export function FileEditor({
                   {creatingVenv ? 'Creating...' : 'Create'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Installed Packages Dialog */}
+      {showPackagesDialog && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50" onClick={() => setShowPackagesDialog(false)}>
+          <div
+            className="bg-surface-primary border border-border-secondary rounded-lg shadow-dropdown-elevated flex flex-col max-h-[70vh] w-[420px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-border-primary">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-text-secondary" />
+                <h3 className="text-sm font-medium text-text-primary">
+                  Installed Packages
+                  {!packagesLoading && !packagesError && (
+                    <span className="ml-1.5 text-xs text-text-tertiary font-normal">
+                      {(() => {
+                        const filtered = packagesList.filter(p =>
+                          !packagesFilter || p.name.toLowerCase().includes(packagesFilter.toLowerCase()) || p.version.toLowerCase().includes(packagesFilter.toLowerCase())
+                        );
+                        return packagesFilter
+                          ? `${filtered.length} of ${packagesList.length} packages`
+                          : `${packagesList.length} packages installed`;
+                      })()}
+                    </span>
+                  )}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowPackagesDialog(false)}
+                className="p-0.5 rounded hover:bg-surface-hover text-text-tertiary hover:text-text-primary transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Search filter */}
+            {!packagesLoading && !packagesError && packagesList.length > 0 && (
+              <div className="px-4 py-2 border-b border-border-primary">
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-text-tertiary" />
+                  <input
+                    ref={packagesFilterRef}
+                    type="text"
+                    value={packagesFilter}
+                    onChange={(e) => setPackagesFilter(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setShowPackagesDialog(false); }}
+                    className="w-full pl-7 pr-2 py-1 text-xs bg-bg-primary border border-border-primary rounded text-text-primary focus:outline-none focus:ring-1 focus:ring-interactive placeholder:text-text-tertiary"
+                    placeholder="Filter packages..."
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {packagesLoading && (
+                <div className="flex items-center justify-center gap-2 py-8 text-text-secondary">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-xs">Loading packages...</span>
+                </div>
+              )}
+              {packagesError && (
+                <div className="px-4 py-6 text-center">
+                  <p className="text-xs text-status-error">{packagesError}</p>
+                </div>
+              )}
+              {!packagesLoading && !packagesError && packagesList.length === 0 && (
+                <div className="px-4 py-6 text-center">
+                  <p className="text-xs text-text-tertiary">No packages found.</p>
+                </div>
+              )}
+              {!packagesLoading && !packagesError && packagesList.length > 0 && (
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-surface-primary">
+                    <tr className="border-b border-border-primary">
+                      <th className="text-left px-4 py-1.5 text-text-tertiary font-medium">Package</th>
+                      <th className="text-right px-4 py-1.5 text-text-tertiary font-medium">Version</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {packagesList
+                      .filter(p =>
+                        !packagesFilter || p.name.toLowerCase().includes(packagesFilter.toLowerCase()) || p.version.toLowerCase().includes(packagesFilter.toLowerCase())
+                      )
+                      .map((pkg, i) => (
+                        <tr key={pkg.name} className={i % 2 === 0 ? 'bg-surface-primary' : 'bg-surface-secondary'}>
+                          <td className="px-4 py-1 text-text-primary">{pkg.name}</td>
+                          <td className="px-4 py-1 text-text-secondary text-right font-mono">{pkg.version}</td>
+                        </tr>
+                      ))
+                    }
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 py-2 border-t border-border-primary flex justify-end">
+              <button
+                onClick={() => setShowPackagesDialog(false)}
+                className="px-3 py-1 text-xs text-text-secondary hover:text-text-primary rounded hover:bg-surface-hover transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>,

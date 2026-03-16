@@ -1591,6 +1591,32 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
     }
   });
 
+  // List installed pip packages for a given Python environment
+  ipcMain.handle('file:list-python-packages', async (_, request: { pythonPath: string }) => {
+    try {
+      const pythonPath = request.pythonPath;
+      if (!pythonPath) {
+        return { success: false, error: 'No Python path provided' };
+      }
+
+      const execFilePromise = promisify(execFile);
+      const { stdout } = await execFilePromise(pythonPath, ['-m', 'pip', 'list', '--format=json'], {
+        timeout: 15_000,
+      });
+
+      const packages = JSON.parse(stdout) as Array<{ name: string; version: string }>;
+      return { success: true, packages };
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      // Detect common pip-not-available scenarios
+      if (errMsg.includes('No module named pip') || errMsg.includes('No module named') || errMsg.includes('ENOENT')) {
+        return { success: false, error: 'pip is not available for this Python environment. Install pip first: python -m ensurepip --upgrade' };
+      }
+      console.error('[file:list-python-packages] Error:', error);
+      return { success: false, error: `Failed to list packages: ${errMsg}` };
+    }
+  });
+
   // Create a virtual environment in the session's worktree
   ipcMain.handle('file:create-venv', async (_, request: { sessionId: string; venvName?: string }) => {
     try {
