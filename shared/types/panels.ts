@@ -105,6 +105,9 @@ export interface ExplorerPanelState {
   fileTreeWidth?: number;         // Width of the file tree panel
   searchQuery?: string;           // Current search query in file tree
   showSearch?: boolean;           // Whether search is visible
+
+  // Python environment
+  selectedPythonEnv?: string;     // Path to the selected Python interpreter
 }
 
 export interface LogsPanelState {

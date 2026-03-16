@@ -1086,7 +1086,7 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
   });
 
   // Run a script file (Python, JS, TS, Shell, etc.) in the session's worktree
-  ipcMain.handle('file:run-script', async (_, request: { sessionId: string; filePath: string }) => {
+  ipcMain.handle('file:run-script', async (_, request: { sessionId: string; filePath: string; runner?: string }) => {
     try {
       const session = sessionManager.getSession(request.sessionId);
       if (!session) {
@@ -1118,20 +1118,28 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
         throw new Error(`File not found: ${normalizedPath}`);
       }
 
-      // Detect runner based on file extension
+      // Detect runner based on file extension (or use override)
       const ext = path.extname(fullPath).toLowerCase();
-      const runnerMap: Record<string, { command: string; args: string[] }> = {
-        '.py': { command: 'python', args: [fullPath] },
-        '.js': { command: 'node', args: [fullPath] },
-        '.ts': { command: 'npx', args: ['tsx', fullPath] },
-        '.sh': { command: 'bash', args: [fullPath] },
-        '.bat': { command: 'cmd', args: ['/c', fullPath] },
-        '.ps1': { command: 'powershell', args: ['-ExecutionPolicy', 'Bypass', '-File', fullPath] },
-      };
+      let runner: { command: string; args: string[] };
 
-      const runner = runnerMap[ext];
-      if (!runner) {
-        throw new Error(`Unsupported file type: ${ext}. Supported: .py, .js, .ts, .sh, .bat, .ps1`);
+      if (request.runner && ext === '.py') {
+        // Use the provided Python runner override for .py files
+        runner = { command: request.runner, args: [fullPath] };
+      } else {
+        const runnerMap: Record<string, { command: string; args: string[] }> = {
+          '.py': { command: 'python', args: [fullPath] },
+          '.js': { command: 'node', args: [fullPath] },
+          '.ts': { command: 'npx', args: ['tsx', fullPath] },
+          '.sh': { command: 'bash', args: [fullPath] },
+          '.bat': { command: 'cmd', args: ['/c', fullPath] },
+          '.ps1': { command: 'powershell', args: ['-ExecutionPolicy', 'Bypass', '-File', fullPath] },
+        };
+
+        const detected = runnerMap[ext];
+        if (!detected) {
+          throw new Error(`Unsupported file type: ${ext}. Supported: .py, .js, .ts, .sh, .bat, .ps1`);
+        }
+        runner = detected;
       }
 
       console.log(`[file:run-script] Running ${runner.command} ${runner.args.join(' ')} in ${basePath}`);
@@ -1292,6 +1300,197 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         log: ''
+      };
+    }
+  });
+
+  // Detect available Python environments in the session's worktree
+  ipcMain.handle('file:detect-python-envs', async (_, request: { sessionId: string }) => {
+    try {
+      const session = sessionManager.getSession(request.sessionId);
+      if (!session) {
+        throw new Error(`Session not found: ${request.sessionId}`);
+      }
+
+      const ctx = sessionManager.getProjectContext(request.sessionId);
+      if (!ctx) throw new Error('Project not found for session');
+      const { pathResolver } = ctx;
+      const basePath = pathResolver.toFileSystem(session.worktreePath);
+
+      interface PythonEnv {
+        path: string;
+        version: string;
+        isVenv: boolean;
+        name: string;
+      }
+
+      const envs: PythonEnv[] = [];
+      const seenPaths = new Set<string>();
+      const isWin = process.platform === 'win32';
+      const execFilePromise = promisify(execFile);
+
+      const tryPython = async (pythonPath: string, name: string, isVenv: boolean): Promise<void> => {
+        try {
+          // Resolve to absolute path for deduplication
+          let resolvedPath = pythonPath;
+          try {
+            if (!path.isAbsolute(pythonPath)) {
+              // Use 'where' on Windows, 'which' on Unix to resolve
+              const whichCmd = isWin ? 'where' : 'which';
+              const result = await execFilePromise(whichCmd, [pythonPath], { timeout: 5_000 });
+              resolvedPath = result.stdout.trim().split('\n')[0].trim();
+            }
+          } catch {
+            // If we can't resolve, use the original path
+          }
+
+          if (seenPaths.has(resolvedPath)) return;
+
+          const result = await execFilePromise(pythonPath, ['--version'], {
+            timeout: 10_000,
+            cwd: basePath,
+            env: { ...process.env },
+          });
+
+          const versionOutput = (result.stdout || '') + (result.stderr || '');
+          const versionMatch = versionOutput.match(/Python\s+([\d.]+)/);
+          const version = versionMatch ? versionMatch[1] : 'unknown';
+
+          seenPaths.add(resolvedPath);
+          envs.push({
+            path: resolvedPath,
+            version,
+            isVenv,
+            name: isVenv ? name : `Python ${version}`,
+          });
+        } catch {
+          // Python not found or not accessible — skip
+        }
+      };
+
+      // 1. Check system Python installations
+      await tryPython('python', 'System Python', false);
+      await tryPython('python3', 'System Python 3', false);
+
+      // 2. Check virtual environments in the worktree
+      const venvDirs = ['.venv', 'venv', 'env'];
+      for (const venvDir of venvDirs) {
+        const winPath = path.join(basePath, venvDir, 'Scripts', 'python.exe');
+        const unixPath = path.join(basePath, venvDir, 'bin', 'python');
+        const pythonPath = isWin ? winPath : unixPath;
+
+        try {
+          await fs.access(pythonPath);
+          await tryPython(pythonPath, venvDir, true);
+        } catch {
+          // venv doesn't exist — skip
+        }
+      }
+
+      // 3. Also scan for any other directories that look like venvs (contain pyvenv.cfg)
+      try {
+        const entries = await fs.readdir(basePath, { withFileTypes: true });
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+          if (venvDirs.includes(entry.name)) continue; // Already checked
+          try {
+            const pyvenvCfg = path.join(basePath, entry.name, 'pyvenv.cfg');
+            await fs.access(pyvenvCfg);
+            const winPath = path.join(basePath, entry.name, 'Scripts', 'python.exe');
+            const unixPath = path.join(basePath, entry.name, 'bin', 'python');
+            const pythonPath = isWin ? winPath : unixPath;
+            try {
+              await fs.access(pythonPath);
+              await tryPython(pythonPath, entry.name, true);
+            } catch {
+              // No python binary found in this venv — skip
+            }
+          } catch {
+            // Not a venv — skip
+          }
+        }
+      } catch {
+        // Can't read directory — skip
+      }
+
+      console.log(`[file:detect-python-envs] Found ${envs.length} Python environments`);
+      return envs;
+    } catch (error) {
+      console.error('[file:detect-python-envs] Error:', error);
+      return [];
+    }
+  });
+
+  // Create a virtual environment in the session's worktree
+  ipcMain.handle('file:create-venv', async (_, request: { sessionId: string; venvName?: string }) => {
+    try {
+      const session = sessionManager.getSession(request.sessionId);
+      if (!session) {
+        throw new Error(`Session not found: ${request.sessionId}`);
+      }
+
+      const ctx = sessionManager.getProjectContext(request.sessionId);
+      if (!ctx) throw new Error('Project not found for session');
+      const { pathResolver } = ctx;
+      const basePath = pathResolver.toFileSystem(session.worktreePath);
+
+      const venvName = request.venvName || '.venv';
+
+      // Validate venv name — must be a simple directory name, no path traversal
+      if (venvName.includes('/') || venvName.includes('\\') || venvName.includes('..') || venvName.startsWith('..' )) {
+        throw new Error('Invalid virtual environment name');
+      }
+
+      const venvPath = path.join(basePath, venvName);
+
+      // Check if it already exists
+      try {
+        await fs.access(venvPath);
+        throw new Error(`Directory "${venvName}" already exists`);
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('already exists')) {
+          throw err;
+        }
+        // Directory doesn't exist — good, we can create it
+      }
+
+      console.log(`[file:create-venv] Creating venv "${venvName}" in ${basePath}`);
+
+      const execFilePromise = promisify(execFile);
+      try {
+        await execFilePromise('python', ['-m', 'venv', venvName], {
+          cwd: basePath,
+          timeout: 60_000,
+          env: { ...process.env },
+        });
+      } catch {
+        // Try python3 if python fails
+        try {
+          await execFilePromise('python3', ['-m', 'venv', venvName], {
+            cwd: basePath,
+            timeout: 60_000,
+            env: { ...process.env },
+          });
+        } catch (err2) {
+          const execError = err2 as { message?: string };
+          throw new Error(`Failed to create venv: ${execError.message || 'Unknown error'}. Ensure Python is installed.`);
+        }
+      }
+
+      // Determine the python path inside the new venv
+      const isWin = process.platform === 'win32';
+      const pythonInVenv = isWin
+        ? path.join(venvPath, 'Scripts', 'python.exe')
+        : path.join(venvPath, 'bin', 'python');
+
+      console.log(`[file:create-venv] Successfully created venv at ${venvPath}`);
+      return { success: true, path: pythonInVenv };
+    } catch (error) {
+      console.error('[file:create-venv] Error:', error);
+      return {
+        success: false,
+        path: '',
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   });
