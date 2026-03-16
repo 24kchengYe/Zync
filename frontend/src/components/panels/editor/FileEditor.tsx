@@ -1197,6 +1197,8 @@ export function FileEditor({
   const [scriptOutput, setScriptOutput] = useState<string | null>(null);
   const [scriptError, setScriptError] = useState<string | null>(null);
   const [showScriptOutput, setShowScriptOutput] = useState(false);
+  const [outputHeight, setOutputHeight] = useState(200);
+  const outputHeightRef = useRef(200);
 
   // Python environment state
   const [pythonEnvs, setPythonEnvs] = useState<Array<{ path: string; version: string; isVenv: boolean; name: string }>>([]);
@@ -2352,8 +2354,32 @@ export function FileEditor({
               {/* Script output panel */}
               {showScriptOutput && (
                 <>
-                  <div className="h-px bg-border-primary flex-shrink-0" />
-                  <div className="flex flex-col flex-shrink-0" style={{ height: '200px' }}>
+                  {/* Draggable divider for output panel */}
+                  <div
+                    className="h-1 bg-border-primary flex-shrink-0 cursor-row-resize hover:bg-interactive/50 active:bg-interactive transition-colors"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const startY = e.clientY;
+                      const startHeight = outputHeightRef.current;
+                      const onMouseMove = (ev: MouseEvent) => {
+                        const delta = startY - ev.clientY;
+                        const newHeight = Math.max(80, Math.min(500, startHeight + delta));
+                        outputHeightRef.current = newHeight;
+                        setOutputHeight(newHeight);
+                      };
+                      const onMouseUp = () => {
+                        document.removeEventListener('mousemove', onMouseMove);
+                        document.removeEventListener('mouseup', onMouseUp);
+                        document.body.style.cursor = '';
+                        document.body.style.userSelect = '';
+                      };
+                      document.body.style.cursor = 'row-resize';
+                      document.body.style.userSelect = 'none';
+                      document.addEventListener('mousemove', onMouseMove);
+                      document.addEventListener('mouseup', onMouseUp);
+                    }}
+                  />
+                  <div className="flex flex-col flex-shrink-0" style={{ height: `${outputHeight}px` }}>
                     <div className="flex items-center justify-between px-3 py-1 bg-surface-secondary border-b border-border-primary flex-shrink-0">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-text-secondary font-medium">Output</span>
