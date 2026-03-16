@@ -7,6 +7,13 @@ if (process.platform === 'win32') {
     require('child_process').execSync('chcp 65001', { stdio: 'ignore' });
   } catch { /* ignore */ }
   process.env.LANG = process.env.LANG || 'zh_CN.UTF-8';
+  // Force Node.js stdout/stderr to use UTF-8
+  if (process.stdout && typeof (process.stdout as NodeJS.WriteStream).setDefaultEncoding === 'function') {
+    (process.stdout as NodeJS.WriteStream).setDefaultEncoding('utf-8');
+  }
+  if (process.stderr && typeof (process.stderr as NodeJS.WriteStream).setDefaultEncoding === 'function') {
+    (process.stderr as NodeJS.WriteStream).setDefaultEncoding('utf-8');
+  }
 }
 
 // Fix GTK 2/3 and GTK 4 conflict on Linux (Electron 36 issue)
