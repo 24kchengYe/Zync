@@ -104,6 +104,94 @@ export class WorktreeManager {
     // No longer initialized with a single repo path
   }
 
+  /**
+   * Create symlinks in worktree for directories that are gitignored
+   * (data, models, etc.) so code using relative paths still works
+   */
+  private async symlinkIgnoredDirs(projectPath: string, worktreePath: string, pathResolver: PathResolver): Promise<void> {
+    const fs = await import('fs');
+    const path = await import('path');
+
+    const srcDir = pathResolver.toFileSystem(projectPath);
+    const dstDir = pathResolver.toFileSystem(worktreePath);
+
+    // Read .gitignore to find ignored directories
+    const gitignorePath = path.join(srcDir, '.gitignore');
+    if (!fs.existsSync(gitignorePath)) return;
+
+    const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
+    const lines = gitignoreContent.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+
+    // Scan project root for directories that match gitignore patterns
+    const entries = fs.readdirSync(srcDir, { withFileTypes: true });
+    let linkedCount = 0;
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name.startsWith('.') || entry.name === 'worktrees' || entry.name === 'node_modules') continue;
+
+      // Check if this directory would be ignored by any gitignore pattern
+      const isIgnored = lines.some(pattern => {
+        const cleanPattern = pattern.replace(/\/$/, '');
+        // Simple glob match: exact name or wildcard
+        if (cleanPattern === entry.name) return true;
+        if (cleanPattern === `${entry.name}/`) return true;
+        return false;
+      });
+
+      if (!isIgnored) {
+        // Also check if directory contains mostly data files
+        const dirPath = path.join(srcDir, entry.name);
+        const isDataDir = this.isLikelyDataDir(dirPath, fs);
+        if (!isDataDir) continue;
+      }
+
+      // Create symlink: worktree/dirname -> project/dirname
+      const linkPath = path.join(dstDir, entry.name);
+      const targetPath = path.join(srcDir, entry.name);
+
+      if (fs.existsSync(linkPath)) continue; // Already exists in worktree (tracked by git)
+
+      try {
+        fs.symlinkSync(targetPath, linkPath, 'junction'); // junction works without admin on Windows
+        linkedCount++;
+        console.log(`[WorktreeManager] Symlinked: ${entry.name} -> ${targetPath}`);
+      } catch (e) {
+        console.warn(`[WorktreeManager] Failed to symlink ${entry.name}:`, e);
+      }
+    }
+
+    if (linkedCount > 0) {
+      console.log(`[WorktreeManager] Created ${linkedCount} symlinks for data directories`);
+    }
+  }
+
+  /**
+   * Check if a directory likely contains data files (not code)
+   */
+  private isLikelyDataDir(dirPath: string, fs: typeof import('fs')): boolean {
+    try {
+      const files = fs.readdirSync(dirPath, { withFileTypes: true }).slice(0, 20); // Sample first 20
+      const dataExtensions = new Set([
+        '.csv', '.xlsx', '.parquet', '.feather', '.sqlite', '.db',
+        '.pth', '.pt', '.h5', '.pkl', '.onnx', '.safetensors',
+        '.tif', '.tiff', '.shp', '.gpkg', '.img', '.hdf', '.nc',
+        '.npy', '.npz', '.zip', '.tar', '.gz', '.7z',
+        '.png', '.jpg', '.jpeg', '.bmp'
+      ]);
+      let dataCount = 0;
+      for (const f of files) {
+        if (f.isFile()) {
+          const ext = f.name.substring(f.name.lastIndexOf('.')).toLowerCase();
+          if (dataExtensions.has(ext)) dataCount++;
+        }
+      }
+      return dataCount >= 3; // If 3+ data files in first 20 entries, it's a data dir
+    } catch {
+      return false;
+    }
+  }
+
   private getProjectPaths(projectPath: string, worktreeFolder: string | undefined, pathResolver: PathResolver) {
     const cacheKey = `${projectPath}:${worktreeFolder || 'worktrees'}`;
     if (!this.projectsCache.has(cacheKey)) {
@@ -239,6 +327,14 @@ export class WorktreeManager {
       }
       
       console.log(`[WorktreeManager] Worktree created successfully at: ${worktreePath}`);
+
+      // Create symlinks for gitignored directories (data, models, etc.)
+      try {
+        await this.symlinkIgnoredDirs(projectPath, worktreePath, pathResolver);
+      } catch (symlinkError) {
+        console.warn(`[WorktreeManager] Failed to create symlinks for ignored dirs:`, symlinkError);
+        // Non-fatal: worktree still works, just without data symlinks
+      }
 
       // Track worktree creation
       if (this.analyticsManager) {
