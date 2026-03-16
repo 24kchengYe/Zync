@@ -23,9 +23,9 @@ interface GitStatusCache {
 export class GitStatusManager extends EventEmitter {
   private cache: GitStatusCache = {};
   // Smart visibility-aware polling for active sessions only
-  private readonly CACHE_TTL_MS = 5000; // 5 seconds cache
+  private readonly CACHE_TTL_MS = 30000; // 30 seconds cache (event-driven refresh handles immediate updates)
   private refreshDebounceTimers: Map<string, NodeJS.Timeout> = new Map();
-  private readonly DEBOUNCE_MS = 2000; // 2 seconds debounce to batch rapid changes
+  private readonly DEBOUNCE_MS = 3000; // 3 seconds debounce to batch rapid changes
   private gitLogger: GitStatusLogger;
   private fileWatcher: GitFileWatcher;
 
@@ -499,6 +499,12 @@ export class GitStatusManager extends EventEmitter {
     }
 
     try {
+      // Skip PR check for repos without remotes (avoids slow error on every poll)
+      const remoteCheck = await commandRunner.execAsync('git remote', projectPath, { timeout: 3000 }).catch(() => ({ stdout: '' }));
+      if (!remoteCheck.stdout.trim()) {
+        return {};
+      }
+
       const result = await commandRunner.execAsync(
         `gh pr list --head "${branchName}" --state all --json number,url,title,state,body --limit 1`,
         projectPath,
