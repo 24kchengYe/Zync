@@ -88,6 +88,8 @@ export interface AppConfig {
   preferredShell?: 'auto' | 'gitbash' | 'powershell' | 'pwsh' | 'cmd';
   // Cloud VM settings
   cloud?: CloudVmConfig;
+  // User-added custom Python executable paths
+  customPythonPaths?: string[];
 }
 
 export interface UpdateConfigRequest {
@@ -150,4 +152,6 @@ export interface UpdateConfigRequest {
   preferredShell?: 'auto' | 'gitbash' | 'powershell' | 'pwsh' | 'cmd';
   // Cloud VM settings
   cloud?: CloudVmConfig;
+  // User-added custom Python executable paths
+  customPythonPaths?: string[];
 }

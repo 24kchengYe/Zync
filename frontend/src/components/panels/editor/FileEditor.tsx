@@ -14,6 +14,8 @@ import { NotebookPreview } from './NotebookPreview';
 import { useResizablePanel } from '../../../hooks/useResizablePanel';
 import { ExplorerPanelState } from '../../../../../shared/types/panels';
 import { isMac, isWindows } from '../../../utils/platformUtils';
+import { Dropdown, DropdownMenuItem } from '../../ui/Dropdown';
+import type { DropdownItem } from '../../ui/Dropdown';
 // TerminalPopover no longer used — replaced by FileTreeContextMenu
 
 interface FileItem {
@@ -1201,10 +1203,11 @@ export function FileEditor({
   const outputHeightRef = useRef(200);
 
   // Python environment state
-  const [pythonEnvs, setPythonEnvs] = useState<Array<{ path: string; version: string; isVenv: boolean; name: string }>>([]);
+  type PythonEnvSource = 'system' | 'venv' | 'conda' | 'pyenv' | 'custom';
+  interface PythonEnvInfo { path: string; version: string; isVenv: boolean; name: string; source: PythonEnvSource }
+  const [pythonEnvs, setPythonEnvs] = useState<PythonEnvInfo[]>([]);
   const [selectedPythonEnv, setSelectedPythonEnv] = useState<string | null>(() => initialState?.selectedPythonEnv || null);
-  const [showPythonEnvDropdown, setShowPythonEnvDropdown] = useState(false);
-  const pythonEnvDropdownRef = useRef<HTMLDivElement>(null);
+  const [pythonEnvLoading, setPythonEnvLoading] = useState(false);
 
   // Create venv dialog state
   const [showCreateVenvDialog, setShowCreateVenvDialog] = useState(false);
@@ -1834,8 +1837,9 @@ export function FileEditor({
 
   // Detect Python environments on mount
   const detectPythonEnvs = useCallback(async () => {
+    setPythonEnvLoading(true);
     try {
-      const envs = await window.electronAPI.invoke('file:detect-python-envs', { sessionId }) as Array<{ path: string; version: string; isVenv: boolean; name: string }>;
+      const envs = await window.electronAPI.invoke('file:detect-python-envs', { sessionId }) as PythonEnvInfo[];
       setPythonEnvs(envs);
       // If no env is selected yet, auto-select the first one
       if (!selectedPythonEnv && envs.length > 0) {
@@ -1844,12 +1848,40 @@ export function FileEditor({
       }
     } catch (err) {
       console.warn('[FileEditor] Failed to detect Python environments:', err);
+    } finally {
+      setPythonEnvLoading(false);
     }
   }, [sessionId, selectedPythonEnv, onStateChange]);
 
   useEffect(() => {
     detectPythonEnvs();
   }, [detectPythonEnvs]);
+
+  // Browse for a custom Python executable
+  const handleBrowsePython = useCallback(async () => {
+    try {
+      const result = await window.electronAPI.dialog.openFile({
+        title: 'Select Python Executable',
+        buttonLabel: 'Select',
+        filters: process.platform === 'win32'
+          ? [{ name: 'Python Executable', extensions: ['exe'] }]
+          : [{ name: 'All Files', extensions: ['*'] }],
+      });
+      if (result.success && result.data) {
+        const addResult = await window.electronAPI.invoke('file:add-python-env', { pythonPath: result.data }) as { success: boolean; data?: PythonEnvInfo; error?: string };
+        if (addResult.success && addResult.data) {
+          // Refresh envs to include the newly added one
+          await detectPythonEnvs();
+          setSelectedPythonEnv(addResult.data.path);
+          if (onStateChange) onStateChange({ selectedPythonEnv: addResult.data.path });
+        } else {
+          setScriptError(addResult.error || 'Failed to add Python environment');
+        }
+      }
+    } catch (err) {
+      console.warn('[FileEditor] Failed to browse for Python:', err);
+    }
+  }, [detectPythonEnvs, onStateChange]);
 
   // Persist selected Python env
   useEffect(() => {
@@ -1858,17 +1890,16 @@ export function FileEditor({
     }
   }, [selectedPythonEnv, onStateChange]);
 
-  // Close Python env dropdown on click outside
-  useEffect(() => {
-    if (!showPythonEnvDropdown) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (pythonEnvDropdownRef.current && !pythonEnvDropdownRef.current.contains(e.target as Node)) {
-        setShowPythonEnvDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showPythonEnvDropdown]);
+  // Python env icon helper
+  const getPythonEnvIcon = (source: PythonEnvSource): string => {
+    switch (source) {
+      case 'venv': return '\uD83D\uDCE6'; // package
+      case 'conda': return '\uD83D\uDD27'; // wrench
+      case 'pyenv': return '\uD83D\uDD27'; // wrench
+      case 'custom': return '\u2B50'; // star
+      default: return '\uD83D\uDC0D'; // snake
+    }
+  };
 
   // Create virtual environment handler
   const handleCreateVenv = useCallback(async () => {
@@ -1885,7 +1916,7 @@ export function FileEditor({
         setCreateVenvName('.venv');
         // Refresh file tree
         // Re-detect python envs and auto-select the new one
-        const envs = await window.electronAPI.invoke('file:detect-python-envs', { sessionId }) as Array<{ path: string; version: string; isVenv: boolean; name: string }>;
+        const envs = await window.electronAPI.invoke('file:detect-python-envs', { sessionId }) as PythonEnvInfo[];
         setPythonEnvs(envs);
         // Auto-select the newly created venv
         if (result.path) {
@@ -2165,40 +2196,72 @@ export function FileEditor({
                   </button>
                 )}
                 {/* Python Environment Selector — shown next to Run for .py files */}
-                {isRunnableFile && !mediaFileType && !isLatexFile && selectedFile?.path.endsWith('.py') && pythonEnvs.length > 0 && (
-                  <div className="relative" ref={pythonEnvDropdownRef}>
-                    <button
-                      onClick={() => setShowPythonEnvDropdown(!showPythonEnvDropdown)}
-                      className="px-2 py-1 text-[10px] font-medium rounded-lg transition-colors flex items-center gap-1 bg-surface-tertiary hover:bg-surface-hover text-text-secondary border border-border-primary"
-                      title="Select Python environment"
-                    >
-                      <span className="truncate max-w-[100px]">
-                        {pythonEnvs.find(e => e.path === selectedPythonEnv)?.name || 'Python'}
-                      </span>
-                      <ChevronDown className="w-2.5 h-2.5 flex-shrink-0" />
-                    </button>
-                    {showPythonEnvDropdown && (
-                      <div className="absolute top-full right-0 mt-1 z-[10001] bg-surface-primary border border-border-secondary rounded-lg shadow-dropdown-elevated py-1 min-w-[200px]">
-                        {pythonEnvs.map((env) => (
-                          <button
-                            key={env.path}
-                            className={`w-full px-3 py-1.5 text-left text-xs transition-colors flex items-center gap-2 hover:bg-surface-hover ${
-                              env.path === selectedPythonEnv ? 'text-interactive font-medium' : 'text-text-primary'
-                            }`}
-                            onClick={() => {
-                              setSelectedPythonEnv(env.path);
-                              setShowPythonEnvDropdown(false);
-                            }}
-                          >
-                            <span className="flex-1 truncate">{env.name}</span>
-                            <span className="text-text-tertiary text-[10px] truncate max-w-[120px]" title={env.path}>
-                              {env.isVenv ? env.path.split(/[/\\]/).slice(-3).join('/') : `v${env.version}`}
+                {isRunnableFile && !mediaFileType && !isLatexFile && selectedFile?.path.endsWith('.py') && (
+                  <Dropdown
+                    trigger={
+                      <button
+                        className="px-2 py-1 text-[10px] font-medium rounded-lg transition-colors flex items-center gap-1 bg-surface-tertiary hover:bg-surface-hover text-text-secondary border border-border-primary"
+                        title="Select Python environment"
+                      >
+                        {pythonEnvLoading ? (
+                          <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                        ) : (
+                          <span className="mr-0.5">{(() => {
+                            const env = pythonEnvs.find(e => e.path === selectedPythonEnv);
+                            return env ? getPythonEnvIcon(env.source) : '\uD83D\uDC0D';
+                          })()}</span>
+                        )}
+                        <span className="truncate max-w-[100px]">
+                          {pythonEnvs.find(e => e.path === selectedPythonEnv)?.name || 'Python'}
+                        </span>
+                        <ChevronDown className="w-2.5 h-2.5 flex-shrink-0" />
+                      </button>
+                    }
+                    items={[
+                      ...pythonEnvs.map((env): DropdownItem => ({
+                        id: env.path,
+                        label: (
+                          <div className="flex flex-col">
+                            <span className="flex items-center gap-1.5">
+                              <span>{getPythonEnvIcon(env.source)}</span>
+                              <span>{env.name}</span>
+                              <span className="text-[10px] text-text-tertiary ml-auto">v{env.version}</span>
                             </span>
-                          </button>
-                        ))}
+                            <span className="text-[10px] text-text-tertiary truncate max-w-[240px]" title={env.path}>
+                              {env.path}
+                            </span>
+                          </div>
+                        ),
+                        onClick: () => {
+                          setSelectedPythonEnv(env.path);
+                          if (onStateChange) onStateChange({ selectedPythonEnv: env.path });
+                        },
+                      })),
+                    ]}
+                    selectedId={selectedPythonEnv || undefined}
+                    width="lg"
+                    position="bottom-right"
+                    footer={
+                      <div className="flex flex-col">
+                        <DropdownMenuItem
+                          icon={RefreshCw}
+                          label={pythonEnvLoading ? 'Scanning...' : 'Refresh Environments'}
+                          onClick={() => detectPythonEnvs()}
+                          disabled={pythonEnvLoading}
+                        />
+                        <DropdownMenuItem
+                          icon={Search}
+                          label="Browse..."
+                          onClick={handleBrowsePython}
+                        />
+                        <DropdownMenuItem
+                          icon={FolderPlus}
+                          label="Create Virtual Environment..."
+                          onClick={() => setShowCreateVenvDialog(true)}
+                        />
                       </div>
-                    )}
-                  </div>
+                    }
+                  />
                 )}
                 {/* LaTeX Compile & Preview button */}
                 {isLatexFile && !mediaFileType && (

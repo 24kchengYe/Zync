@@ -456,7 +456,12 @@ export function registerProjectHandlers(ipcMain: IpcMain, services: AppServices)
         wsl_distribution: wslInfo?.distro ?? null
       };
       const commandRunner = new CommandRunner(tempProject);
-      const branch = await worktreeManager.getProjectMainBranch(tempProject.path, commandRunner);
+      // Race against a timeout to prevent hanging on large repos or problematic paths
+      const branchPromise = worktreeManager.getProjectMainBranch(tempProject.path, commandRunner);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Branch detection timed out after 5s')), 5000)
+      );
+      const branch = await Promise.race([branchPromise, timeoutPromise]);
       return { success: true, data: branch };
     } catch (error) {
       console.log('[Main] Could not detect branch:', error);

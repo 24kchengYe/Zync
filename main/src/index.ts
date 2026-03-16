@@ -1,6 +1,14 @@
 // Load ReadableStream polyfill before any other imports
 import './polyfills/readablestream';
 
+// Fix Windows console encoding for Chinese paths
+if (process.platform === 'win32') {
+  try {
+    require('child_process').execSync('chcp 65001', { stdio: 'ignore' });
+  } catch { /* ignore */ }
+  process.env.LANG = process.env.LANG || 'zh_CN.UTF-8';
+}
+
 // Fix GTK 2/3 and GTK 4 conflict on Linux (Electron 36 issue)
 // This MUST be done before importing electron
 import { app } from 'electron';

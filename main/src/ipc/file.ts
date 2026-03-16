@@ -65,6 +65,15 @@ interface FileSearchRequest {
   limit?: number;
 }
 
+/** Safely glob for files, returning empty array on error */
+async function safeGlob(pattern: string): Promise<string[]> {
+  try {
+    return await glob(pattern, { windowsPathsNoEscape: true });
+  } catch {
+    return [];
+  }
+}
+
 export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): void {
   const { sessionManager, databaseService, gitStatusManager, gitDiffManager, configManager } = services;
 
@@ -1330,6 +1339,7 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
         version: string;
         isVenv: boolean;
         name: string;
+        source: 'system' | 'venv' | 'conda' | 'pyenv' | 'custom';
       }
 
       const envs: PythonEnv[] = [];
@@ -1337,7 +1347,7 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
       const isWin = process.platform === 'win32';
       const execFilePromise = promisify(execFile);
 
-      const tryPython = async (pythonPath: string, name: string, isVenv: boolean): Promise<void> => {
+      const tryPython = async (pythonPath: string, name: string, isVenv: boolean, source: PythonEnv['source'] = 'system'): Promise<void> => {
         try {
           // Resolve to absolute path for deduplication
           let resolvedPath = pythonPath;
@@ -1352,7 +1362,8 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
             // If we can't resolve, use the original path
           }
 
-          if (seenPaths.has(resolvedPath)) return;
+          const normalizedPath = resolvedPath.replace(/\\/g, '/').toLowerCase();
+          if (seenPaths.has(normalizedPath)) return;
 
           const result = await execFilePromise(pythonPath, ['--version'], {
             timeout: 10_000,
@@ -1364,12 +1375,13 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
           const versionMatch = versionOutput.match(/Python\s+([\d.]+)/);
           const version = versionMatch ? versionMatch[1] : 'unknown';
 
-          seenPaths.add(resolvedPath);
+          seenPaths.add(normalizedPath);
           envs.push({
             path: resolvedPath,
             version,
             isVenv,
-            name: isVenv ? name : `Python ${version}`,
+            name,
+            source,
           });
         } catch {
           // Python not found or not accessible — skip
@@ -1377,10 +1389,86 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
       };
 
       // 1. Check system Python installations
-      await tryPython('python', 'System Python', false);
-      await tryPython('python3', 'System Python 3', false);
+      await tryPython('python', 'System Python', false, 'system');
+      await tryPython('python3', 'System Python 3', false, 'system');
 
-      // 2. Check virtual environments in the worktree
+      // 2. Windows: Python Launcher (py -0p) for system-wide Pythons
+      if (isWin) {
+        try {
+          const pyResult = await execFilePromise('py', ['-0p'], { timeout: 5_000 });
+          const lines = pyResult.stdout.trim().split('\n');
+          for (const line of lines) {
+            // Format: " -3.11-64  C:\Python311\python.exe" or " -V:3.12 *  C:\...\python.exe"
+            const match = line.match(/\s+-(?:V:)?([\d.]+)(?:-\d+)?\s+\*?\s*(.+)/);
+            if (match) {
+              const ver = match[1].trim();
+              const pyPath = match[2].trim();
+              await tryPython(pyPath, `Python ${ver}`, false, 'system');
+            }
+          }
+        } catch {
+          // py launcher not available — skip
+        }
+
+        // Also scan common Windows Python installation locations
+        const userHome = process.env.USERPROFILE || process.env.HOME || '';
+        const windowsPythonPaths = [
+          ...await safeGlob('C:/Python*/python.exe'),
+          ...await safeGlob(path.join(userHome, 'AppData/Local/Programs/Python/Python*/python.exe')),
+        ];
+        for (const pyPath of windowsPythonPaths) {
+          await tryPython(pyPath, path.basename(path.dirname(pyPath)), false, 'system');
+        }
+      }
+
+      // 3. Conda environments
+      try {
+        const condaResult = await execFilePromise('conda', ['info', '--envs', '--json'], { timeout: 10_000 });
+        const condaInfo = JSON.parse(condaResult.stdout) as { envs?: string[] };
+        if (condaInfo.envs && Array.isArray(condaInfo.envs)) {
+          for (const envPath of condaInfo.envs) {
+            const pyBin = isWin
+              ? path.join(envPath, 'python.exe')
+              : path.join(envPath, 'bin', 'python');
+            try {
+              await fs.access(pyBin);
+              const envName = path.basename(envPath);
+              // The "base" env's parent is the conda root
+              const displayName = envPath.endsWith('envs') ? 'conda: base' : `conda: ${envName}`;
+              await tryPython(pyBin, displayName, false, 'conda');
+            } catch {
+              // Python binary not found in this conda env — skip
+            }
+          }
+        }
+      } catch {
+        // conda not available — skip
+      }
+
+      // 4. pyenv versions
+      const pyenvRoot = process.env.PYENV_ROOT || (isWin
+        ? path.join(process.env.USERPROFILE || '', '.pyenv', 'pyenv-win')
+        : path.join(process.env.HOME || '', '.pyenv'));
+      const pyenvVersionsDir = path.join(pyenvRoot, 'versions');
+      try {
+        const pyenvEntries = await fs.readdir(pyenvVersionsDir, { withFileTypes: true });
+        for (const entry of pyenvEntries) {
+          if (!entry.isDirectory()) continue;
+          const pyBin = isWin
+            ? path.join(pyenvVersionsDir, entry.name, 'python.exe')
+            : path.join(pyenvVersionsDir, entry.name, 'bin', 'python');
+          try {
+            await fs.access(pyBin);
+            await tryPython(pyBin, `pyenv: ${entry.name}`, false, 'pyenv');
+          } catch {
+            // No python binary — skip
+          }
+        }
+      } catch {
+        // pyenv not available — skip
+      }
+
+      // 5. Check virtual environments in the worktree (well-known names)
       const venvDirs = ['.venv', 'venv', 'env'];
       for (const venvDir of venvDirs) {
         const winPath = path.join(basePath, venvDir, 'Scripts', 'python.exe');
@@ -1389,36 +1477,70 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
 
         try {
           await fs.access(pythonPath);
-          await tryPython(pythonPath, venvDir, true);
+          await tryPython(pythonPath, venvDir, true, 'venv');
         } catch {
           // venv doesn't exist — skip
         }
       }
 
-      // 3. Also scan for any other directories that look like venvs (contain pyvenv.cfg)
+      // 6. Recursively scan first 2 levels for pyvenv.cfg (project-local venvs)
+      const scannedDirs = new Set(venvDirs);
       try {
-        const entries = await fs.readdir(basePath, { withFileTypes: true });
-        for (const entry of entries) {
-          if (!entry.isDirectory()) continue;
-          if (venvDirs.includes(entry.name)) continue; // Already checked
-          try {
-            const pyvenvCfg = path.join(basePath, entry.name, 'pyvenv.cfg');
-            await fs.access(pyvenvCfg);
-            const winPath = path.join(basePath, entry.name, 'Scripts', 'python.exe');
-            const unixPath = path.join(basePath, entry.name, 'bin', 'python');
-            const pythonPath = isWin ? winPath : unixPath;
+        const level1Entries = await fs.readdir(basePath, { withFileTypes: true });
+        for (const entry of level1Entries) {
+          if (!entry.isDirectory() || entry.name.startsWith('.') && scannedDirs.has(entry.name)) continue;
+          if (scannedDirs.has(entry.name)) continue;
+
+          // Check level 1
+          const level1Dir = path.join(basePath, entry.name);
+          const hasPyvenvL1 = await fs.access(path.join(level1Dir, 'pyvenv.cfg')).then(() => true).catch(() => false);
+          if (hasPyvenvL1) {
+            const pyBin = isWin ? path.join(level1Dir, 'Scripts', 'python.exe') : path.join(level1Dir, 'bin', 'python');
             try {
-              await fs.access(pythonPath);
-              await tryPython(pythonPath, entry.name, true);
+              await fs.access(pyBin);
+              await tryPython(pyBin, entry.name, true, 'venv');
             } catch {
-              // No python binary found in this venv — skip
+              // no binary
+            }
+          }
+
+          // Check level 2
+          try {
+            const level2Entries = await fs.readdir(level1Dir, { withFileTypes: true });
+            for (const sub of level2Entries) {
+              if (!sub.isDirectory()) continue;
+              const level2Dir = path.join(level1Dir, sub.name);
+              const hasPyvenvL2 = await fs.access(path.join(level2Dir, 'pyvenv.cfg')).then(() => true).catch(() => false);
+              if (hasPyvenvL2) {
+                const pyBin = isWin ? path.join(level2Dir, 'Scripts', 'python.exe') : path.join(level2Dir, 'bin', 'python');
+                try {
+                  await fs.access(pyBin);
+                  await tryPython(pyBin, `${entry.name}/${sub.name}`, true, 'venv');
+                } catch {
+                  // no binary
+                }
+              }
             }
           } catch {
-            // Not a venv — skip
+            // Can't read level 2 — skip
           }
         }
       } catch {
         // Can't read directory — skip
+      }
+
+      // 7. Include user-saved custom Python paths from config
+      const config = configManager.getConfig();
+      const customPythonPaths: string[] = config.customPythonPaths || [];
+      for (const customPath of customPythonPaths) {
+        await tryPython(customPath, path.basename(path.dirname(customPath)), false, 'custom');
+      }
+
+      // Post-process: update names for system pythons to include version
+      for (const env of envs) {
+        if (env.source === 'system' && env.name.startsWith('System Python') && env.version !== 'unknown') {
+          env.name = `Python ${env.version}`;
+        }
       }
 
       console.log(`[file:detect-python-envs] Found ${envs.length} Python environments`);
@@ -1426,6 +1548,46 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
     } catch (error) {
       console.error('[file:detect-python-envs] Error:', error);
       return [];
+    }
+  });
+
+  // Add a custom Python environment path (validate and persist)
+  ipcMain.handle('file:add-python-env', async (_, request: { pythonPath: string }) => {
+    try {
+      const execFilePromise = promisify(execFile);
+      const pythonPath = request.pythonPath;
+
+      // Validate by running --version
+      const result = await execFilePromise(pythonPath, ['--version'], { timeout: 10_000 });
+      const versionOutput = (result.stdout || '') + (result.stderr || '');
+      const versionMatch = versionOutput.match(/Python\s+([\d.]+)/);
+      const version = versionMatch ? versionMatch[1] : 'unknown';
+
+      if (version === 'unknown') {
+        return { success: false, error: 'Could not determine Python version. Is this a valid Python executable?' };
+      }
+
+      // Save to config
+      const config = configManager.getConfig();
+      const customPaths: string[] = config.customPythonPaths || [];
+      if (!customPaths.includes(pythonPath)) {
+        customPaths.push(pythonPath);
+        await configManager.updateConfig({ customPythonPaths: customPaths });
+      }
+
+      return {
+        success: true,
+        data: {
+          path: pythonPath,
+          version,
+          isVenv: false,
+          name: `Python ${version}`,
+          source: 'custom' as const,
+        }
+      };
+    } catch (error) {
+      console.error('[file:add-python-env] Error:', error);
+      return { success: false, error: `Invalid Python executable: ${error instanceof Error ? error.message : 'Unknown error'}` };
     }
   });
 
