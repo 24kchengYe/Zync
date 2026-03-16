@@ -56,6 +56,8 @@ interface FileTreeContextMenuProps {
   onNewFolder: () => void;
   onRefresh: () => void;
   onToggleSubmenu: (show: boolean) => void;
+  onRunScript?: (file: FileItem) => void;
+  onCreateVenv?: () => void;
 }
 
 function FileTreeContextMenu({
@@ -74,6 +76,8 @@ function FileTreeContextMenu({
   onNewFolder,
   onRefresh,
   onToggleSubmenu,
+  onRunScript,
+  onCreateVenv,
 }: FileTreeContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const submenuRef = useRef<HTMLDivElement>(null);
@@ -175,6 +179,13 @@ function FileTreeContextMenu({
   const isFolder = file?.isDirectory ?? false;
   const isEmptyArea = file === null;
 
+  // Check if file is a runnable script
+  const isRunnable = useMemo(() => {
+    if (!file || file.isDirectory) return false;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    return ['py', 'js', 'ts', 'sh', 'bat', 'ps1'].includes(ext || '');
+  }, [file]);
+
   const menuItemClass = 'w-full px-3 py-1.5 text-left text-sm transition-colors duration-75 flex items-center gap-2 hover:bg-surface-hover text-text-primary disabled:opacity-40 disabled:cursor-not-allowed';
   const separatorClass = 'border-t border-border-secondary my-1';
 
@@ -185,6 +196,17 @@ function FileTreeContextMenu({
         className="fixed z-[10001] bg-surface-primary border border-border-secondary rounded-lg shadow-dropdown-elevated py-1 min-w-[200px]"
         style={{ left: position.left, top: position.top }}
       >
+        {/* Run Script — shown for runnable files at the top */}
+        {isRunnable && onRunScript && file && (
+          <>
+            <button className={menuItemClass} onClick={() => { onRunScript(file); onClose(); }}>
+              <Play className="w-4 h-4 text-status-success" />
+              Run
+            </button>
+            <div className={separatorClass} />
+          </>
+        )}
+
         {/* New File — shown for folders and empty area */}
         {(isFolder || isEmptyArea) && (
           <button
@@ -252,6 +274,17 @@ function FileTreeContextMenu({
           </button>
         )}
 
+        {/* Create Virtual Environment — shown for folders and empty area */}
+        {(isFolder || isEmptyArea) && onCreateVenv && (
+          <>
+            <div className={separatorClass} />
+            <button className={menuItemClass} onClick={() => { onCreateVenv(); onClose(); }}>
+              <FolderPlus className="w-4 h-4 text-interactive" />
+              Create Virtual Environment
+            </button>
+          </>
+        )}
+
         {/* Refresh — shown for empty area */}
         {isEmptyArea && (
           <>
@@ -302,6 +335,8 @@ interface HeadlessFileTreeProps {
   initialSearchQuery?: string;
   initialShowSearch?: boolean;
   onTreeStateChange?: (state: { expandedDirs: string[]; searchQuery: string; showSearch: boolean }) => void;
+  onRunScript?: (file: FileItem) => void;
+  onCreateVenv?: () => void;
 }
 
 function HeadlessFileTree({
@@ -312,6 +347,8 @@ function HeadlessFileTree({
   initialSearchQuery,
   initialShowSearch,
   onTreeStateChange,
+  onRunScript,
+  onCreateVenv,
 }: HeadlessFileTreeProps) {
   // Cache stores loaded directory contents. Key = dirPath, Value = FileItem[].
   const filesCacheRef = useRef(new Map<string, FileItem[]>());
@@ -1080,6 +1117,8 @@ function HeadlessFileTree({
           onNewFolder={handleContextNewFolder}
           onRefresh={() => { handleRefreshAll(); setContextMenu(null); }}
           onToggleSubmenu={setShowNewFileSubmenu}
+          onRunScript={onRunScript}
+          onCreateVenv={onCreateVenv}
         />,
         document.body
       )}
@@ -1158,6 +1197,18 @@ export function FileEditor({
   const [scriptOutput, setScriptOutput] = useState<string | null>(null);
   const [scriptError, setScriptError] = useState<string | null>(null);
   const [showScriptOutput, setShowScriptOutput] = useState(false);
+
+  // Python environment state
+  const [pythonEnvs, setPythonEnvs] = useState<Array<{ path: string; version: string; isVenv: boolean; name: string }>>([]);
+  const [selectedPythonEnv, setSelectedPythonEnv] = useState<string | null>(() => initialState?.selectedPythonEnv || null);
+  const [showPythonEnvDropdown, setShowPythonEnvDropdown] = useState(false);
+  const pythonEnvDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Create venv dialog state
+  const [showCreateVenvDialog, setShowCreateVenvDialog] = useState(false);
+  const [createVenvName, setCreateVenvName] = useState('.venv');
+  const [creatingVenv, setCreatingVenv] = useState(false);
+  const createVenvInputRef = useRef<HTMLInputElement>(null);
 
   const { theme } = useTheme();
   const isDarkMode = theme !== 'light';
@@ -1745,8 +1796,12 @@ export function FileEditor({
   }, [isLatexFile, handleLatexCompile]);
 
   // Script run handler
-  const handleRunScript = useCallback(async () => {
-    if (!selectedFile || !isRunnableFile) return;
+  const handleRunScript = useCallback(async (fileOverride?: FileItem) => {
+    const targetFile = fileOverride || selectedFile;
+    if (!targetFile) return;
+    const ext = targetFile.path.split('.').pop()?.toLowerCase();
+    const runnable = ['py', 'js', 'ts', 'sh', 'bat', 'ps1'].includes(ext || '');
+    if (!runnable) return;
 
     setScriptRunning(true);
     setScriptOutput(null);
@@ -1754,9 +1809,12 @@ export function FileEditor({
     setShowScriptOutput(true);
 
     try {
+      // For .py files, pass selected Python env as runner override
+      const isPython = ext === 'py';
       const result = await window.electronAPI.invoke('file:run-script', {
         sessionId,
-        filePath: selectedFile.path
+        filePath: targetFile.path,
+        ...(isPython && selectedPythonEnv ? { runner: selectedPythonEnv } : {}),
       }) as { success: boolean; output?: string; error?: string };
 
       if (result.success) {
@@ -1770,7 +1828,87 @@ export function FileEditor({
     } finally {
       setScriptRunning(false);
     }
-  }, [selectedFile, isRunnableFile, sessionId]);
+  }, [selectedFile, sessionId, selectedPythonEnv]);
+
+  // Detect Python environments on mount
+  const detectPythonEnvs = useCallback(async () => {
+    try {
+      const envs = await window.electronAPI.invoke('file:detect-python-envs', { sessionId }) as Array<{ path: string; version: string; isVenv: boolean; name: string }>;
+      setPythonEnvs(envs);
+      // If no env is selected yet, auto-select the first one
+      if (!selectedPythonEnv && envs.length > 0) {
+        setSelectedPythonEnv(envs[0].path);
+        if (onStateChange) onStateChange({ selectedPythonEnv: envs[0].path });
+      }
+    } catch (err) {
+      console.warn('[FileEditor] Failed to detect Python environments:', err);
+    }
+  }, [sessionId, selectedPythonEnv, onStateChange]);
+
+  useEffect(() => {
+    detectPythonEnvs();
+  }, [detectPythonEnvs]);
+
+  // Persist selected Python env
+  useEffect(() => {
+    if (selectedPythonEnv && onStateChange) {
+      onStateChange({ selectedPythonEnv });
+    }
+  }, [selectedPythonEnv, onStateChange]);
+
+  // Close Python env dropdown on click outside
+  useEffect(() => {
+    if (!showPythonEnvDropdown) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (pythonEnvDropdownRef.current && !pythonEnvDropdownRef.current.contains(e.target as Node)) {
+        setShowPythonEnvDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showPythonEnvDropdown]);
+
+  // Create virtual environment handler
+  const handleCreateVenv = useCallback(async () => {
+    if (!createVenvName.trim()) return;
+    setCreatingVenv(true);
+    try {
+      const result = await window.electronAPI.invoke('file:create-venv', {
+        sessionId,
+        venvName: createVenvName.trim(),
+      }) as { success: boolean; path: string; error?: string };
+
+      if (result.success) {
+        setShowCreateVenvDialog(false);
+        setCreateVenvName('.venv');
+        // Refresh file tree
+        // Re-detect python envs and auto-select the new one
+        const envs = await window.electronAPI.invoke('file:detect-python-envs', { sessionId }) as Array<{ path: string; version: string; isVenv: boolean; name: string }>;
+        setPythonEnvs(envs);
+        // Auto-select the newly created venv
+        if (result.path) {
+          setSelectedPythonEnv(result.path);
+          if (onStateChange) onStateChange({ selectedPythonEnv: result.path });
+        }
+      } else {
+        setScriptError(result.error || 'Failed to create virtual environment');
+        setShowScriptOutput(true);
+      }
+    } catch (err) {
+      setScriptError(err instanceof Error ? err.message : 'Failed to create virtual environment');
+      setShowScriptOutput(true);
+    } finally {
+      setCreatingVenv(false);
+    }
+  }, [sessionId, createVenvName, onStateChange]);
+
+  // Focus venv name input when dialog opens
+  useEffect(() => {
+    if (showCreateVenvDialog && createVenvInputRef.current) {
+      createVenvInputRef.current.focus();
+      createVenvInputRef.current.select();
+    }
+  }, [showCreateVenvDialog]);
 
   // Load initial file if provided
   useEffect(() => {
@@ -1914,6 +2052,8 @@ export function FileEditor({
           initialSearchQuery={initialState?.searchQuery}
           initialShowSearch={initialState?.showSearch}
           onTreeStateChange={handleTreeStateChange}
+          onRunScript={(file) => handleRunScript(file)}
+          onCreateVenv={() => setShowCreateVenvDialog(true)}
         />
 
         {/* Resize handle */}
@@ -2005,7 +2145,7 @@ export function FileEditor({
                 {/* Run Script button */}
                 {isRunnableFile && !mediaFileType && !isLatexFile && (
                   <button
-                    onClick={handleRunScript}
+                    onClick={() => handleRunScript()}
                     disabled={scriptRunning}
                     className={`px-2 py-1 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
                       scriptRunning
@@ -2021,6 +2161,42 @@ export function FileEditor({
                     )}
                     {scriptRunning ? 'Running...' : 'Run'}
                   </button>
+                )}
+                {/* Python Environment Selector — shown next to Run for .py files */}
+                {isRunnableFile && !mediaFileType && !isLatexFile && selectedFile?.path.endsWith('.py') && pythonEnvs.length > 0 && (
+                  <div className="relative" ref={pythonEnvDropdownRef}>
+                    <button
+                      onClick={() => setShowPythonEnvDropdown(!showPythonEnvDropdown)}
+                      className="px-2 py-1 text-[10px] font-medium rounded-lg transition-colors flex items-center gap-1 bg-surface-tertiary hover:bg-surface-hover text-text-secondary border border-border-primary"
+                      title="Select Python environment"
+                    >
+                      <span className="truncate max-w-[100px]">
+                        {pythonEnvs.find(e => e.path === selectedPythonEnv)?.name || 'Python'}
+                      </span>
+                      <ChevronDown className="w-2.5 h-2.5 flex-shrink-0" />
+                    </button>
+                    {showPythonEnvDropdown && (
+                      <div className="absolute top-full right-0 mt-1 z-[10001] bg-surface-primary border border-border-secondary rounded-lg shadow-dropdown-elevated py-1 min-w-[200px]">
+                        {pythonEnvs.map((env) => (
+                          <button
+                            key={env.path}
+                            className={`w-full px-3 py-1.5 text-left text-xs transition-colors flex items-center gap-2 hover:bg-surface-hover ${
+                              env.path === selectedPythonEnv ? 'text-interactive font-medium' : 'text-text-primary'
+                            }`}
+                            onClick={() => {
+                              setSelectedPythonEnv(env.path);
+                              setShowPythonEnvDropdown(false);
+                            }}
+                          >
+                            <span className="flex-1 truncate">{env.name}</span>
+                            <span className="text-text-tertiary text-[10px] truncate max-w-[120px]" title={env.path}>
+                              {env.isVenv ? env.path.split(/[/\\]/).slice(-3).join('/') : `v${env.version}`}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
                 {/* LaTeX Compile & Preview button */}
                 {isLatexFile && !mediaFileType && (
@@ -2229,6 +2405,56 @@ export function FileEditor({
           </div>
         )}
       </div>
+
+      {/* Create Virtual Environment Dialog */}
+      {showCreateVenvDialog && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50" onClick={() => !creatingVenv && setShowCreateVenvDialog(false)}>
+          <div
+            className="bg-surface-primary border border-border-secondary rounded-lg shadow-dropdown-elevated p-4 min-w-[320px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-medium text-text-primary mb-3">Create Virtual Environment</h3>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs text-text-secondary">Environment name:</label>
+              <input
+                ref={createVenvInputRef}
+                type="text"
+                value={createVenvName}
+                onChange={(e) => setCreateVenvName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !creatingVenv) handleCreateVenv();
+                  if (e.key === 'Escape') setShowCreateVenvDialog(false);
+                }}
+                disabled={creatingVenv}
+                className="px-2.5 py-1.5 text-sm bg-bg-primary border border-border-primary rounded-lg text-text-primary focus:outline-none focus:ring-1 focus:ring-interactive"
+                placeholder=".venv"
+              />
+              <div className="flex items-center justify-end gap-2 mt-2">
+                <button
+                  onClick={() => setShowCreateVenvDialog(false)}
+                  disabled={creatingVenv}
+                  className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary rounded-lg hover:bg-surface-hover transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateVenv}
+                  disabled={creatingVenv || !createVenvName.trim()}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                    creatingVenv
+                      ? 'bg-surface-tertiary text-text-tertiary cursor-not-allowed'
+                      : 'bg-interactive hover:bg-interactive-hover text-white'
+                  }`}
+                >
+                  {creatingVenv && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {creatingVenv ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
