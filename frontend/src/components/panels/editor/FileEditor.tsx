@@ -14,6 +14,7 @@ import { NotebookPreview } from './NotebookPreview';
 import { useResizablePanel } from '../../../hooks/useResizablePanel';
 import { ExplorerPanelState } from '../../../../../shared/types/panels';
 import { isMac, isWindows } from '../../../utils/platformUtils';
+import { usePanelStore } from '../../../stores/panelStore';
 import { Dropdown, DropdownMenuItem } from '../../ui/Dropdown';
 import type { DropdownItem } from '../../ui/Dropdown';
 // TerminalPopover no longer used — replaced by FileTreeContextMenu
@@ -1194,8 +1195,8 @@ export function FileEditor({
   const [splitPercent, setSplitPercent] = useState(50);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
-  // Script run state
-  const [scriptRunning, setScriptRunning] = useState(false);
+  // Script run state (scriptRunning kept for UI; not set since scripts now run in terminal)
+  const [scriptRunning] = useState(false);
   const [scriptOutput, setScriptOutput] = useState<string | null>(null);
   const [scriptError, setScriptError] = useState<string | null>(null);
   const [showScriptOutput, setShowScriptOutput] = useState(false);
@@ -1800,7 +1801,7 @@ export function FileEditor({
     handleLatexCompileRef.current = isLatexFile ? handleLatexCompile : null;
   }, [isLatexFile, handleLatexCompile]);
 
-  // Script run handler
+  // Script run handler — sends command to the bottom terminal panel
   const handleRunScript = useCallback(async (fileOverride?: FileItem) => {
     const targetFile = fileOverride || selectedFile;
     if (!targetFile) return;
@@ -1808,30 +1809,49 @@ export function FileEditor({
     const runnable = ['py', 'js', 'ts', 'sh', 'bat', 'ps1'].includes(ext || '');
     if (!runnable) return;
 
-    setScriptRunning(true);
-    setScriptOutput(null);
-    setScriptError(null);
-    setShowScriptOutput(true);
+    // Build the command string based on file extension
+    const filePath = targetFile.path;
+    let command: string;
+    switch (ext) {
+      case 'py':
+        command = selectedPythonEnv ? `${selectedPythonEnv} "${filePath}"` : `python "${filePath}"`;
+        break;
+      case 'js':
+        command = `node "${filePath}"`;
+        break;
+      case 'ts':
+        command = `npx tsx "${filePath}"`;
+        break;
+      case 'sh':
+        command = `bash "${filePath}"`;
+        break;
+      case 'bat':
+        command = `"${filePath}"`;
+        break;
+      case 'ps1':
+        command = `powershell -File "${filePath}"`;
+        break;
+      default:
+        return;
+    }
+
+    // Find the terminal panel for this session from the panel store
+    const sessionPanels = usePanelStore.getState().getSessionPanels(sessionId);
+    const terminalPanel = sessionPanels.find(p => p.type === 'terminal');
+
+    if (!terminalPanel) {
+      // Fallback: if no terminal panel exists, show error in the output panel
+      setScriptError('No terminal panel found. Please add a Terminal panel first.');
+      setShowScriptOutput(true);
+      return;
+    }
 
     try {
-      // For .py files, pass selected Python env as runner override
-      const isPython = ext === 'py';
-      const result = await window.electronAPI.invoke('file:run-script', {
-        sessionId,
-        filePath: targetFile.path,
-        ...(isPython && selectedPythonEnv ? { runner: selectedPythonEnv } : {}),
-      }) as { success: boolean; output?: string; error?: string };
-
-      if (result.success) {
-        setScriptOutput(result.output || '(no output)');
-      } else {
-        setScriptOutput(result.output || null);
-        setScriptError(result.error || 'Script execution failed');
-      }
+      // Send the command to the terminal panel (with Enter key)
+      await window.electronAPI.panels.sendTerminalInput(terminalPanel.id, command + '\r');
     } catch (err) {
-      setScriptError(err instanceof Error ? err.message : 'Script execution failed');
-    } finally {
-      setScriptRunning(false);
+      setScriptError(err instanceof Error ? err.message : 'Failed to send command to terminal');
+      setShowScriptOutput(true);
     }
   }, [selectedFile, sessionId, selectedPythonEnv]);
 
@@ -1863,7 +1883,7 @@ export function FileEditor({
       const result = await window.electronAPI.dialog.openFile({
         title: 'Select Python Executable',
         buttonLabel: 'Select',
-        filters: process.platform === 'win32'
+        filters: isWindows()
           ? [{ name: 'Python Executable', extensions: ['exe'] }]
           : [{ name: 'All Files', extensions: ['*'] }],
       });
