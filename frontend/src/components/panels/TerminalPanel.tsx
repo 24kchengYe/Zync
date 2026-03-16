@@ -210,6 +210,13 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = React.memo(({ panel, 
           // Use e.code for physical key (e.key may report 'AltGraph' on some layouts)
           if (e.code === 'AltRight') return false;
 
+          // Ctrl/Cmd+C: if text is selected, copy to clipboard instead of sending SIGINT
+          if (ctrlOrMeta && e.key.toLowerCase() === 'c' && terminal.hasSelection()) {
+            navigator.clipboard.writeText(terminal.getSelection());
+            terminal.clearSelection();
+            return false; // Don't send to PTY
+          }
+
           // Ctrl/Cmd+V: stop xterm from sending raw \x16 to PTY
           // Returning false lets the browser trigger a native paste event instead,
           // which is handled by our paste event listener on the terminal container
