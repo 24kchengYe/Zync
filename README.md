@@ -119,7 +119,7 @@ Run Claude Code, Codex, Aider, Goose, or any CLI tool — multiple instances at 
 <td width="50%" valign="top">
 
 ### Built-in Diff Viewer
-See exactly what each agent changed with syntax highlighting. Compare against main, review commits, and decide what to keep.
+See exactly what each agent changed with syntax highlighting. Cached with fingerprint-based invalidation for instant tab switching.
 
 </td>
 </tr>
@@ -141,14 +141,28 @@ Fetch, commit, pull, push, stash, rebase from main, merge to main — all from t
 <tr>
 <td width="50%" valign="top">
 
-### Smart Notifications
-Desktop alerts when an agent finishes, hits an error, or needs your input. Never miss a prompt again.
+### File Explorer & Editor
+Multi-tab file editor with image/PDF/video/audio preview. Right-click context menu for rename, delete, create files. LaTeX compile & preview with Ctrl+S.
 
 </td>
 <td width="50%" valign="top">
 
-### Multi-Tool Support
-Native integration for Claude Code and Codex. Add Aider, Goose, or any CLI tool via custom commands.
+### Python Environment Manager
+Auto-detect system Python, venv, conda, pyenv. Browse for custom interpreters. Create virtual environments. View installed packages.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### Run Scripts in Terminal
+Run Python/JS/TS/Shell scripts directly in the integrated terminal — interactive output, pip install, Ctrl+C support.
+
+</td>
+<td width="50%" valign="top">
+
+### Smart Notifications
+Desktop alerts when an agent finishes, hits an error, or needs your input. Works with any CLI agent.
 
 </td>
 </tr>
@@ -257,19 +271,34 @@ Found a bug or have an idea? [Open an issue](https://github.com/24kchengYe/Zync/
 - Claude Code manages its own sessions natively
 - Diff caching with SHA-1 fingerprint-based invalidation
 
-**Editor:**
-- Multi-file tab bar with cached state per file
+**Editor & Explorer:**
+- Multi-file tab bar with cached state per file (cursor, scroll, content)
 - Image/PDF/video/audio preview in Explorer
-- LaTeX compile & preview with draggable split view (Ctrl+S auto-compile)
-- Python/JS/TS/Shell script execution with output panel
+- LaTeX compile & preview with draggable split view + Ctrl+S auto-compile
+- Right-click context menu: rename, delete, new file (10 types), new folder, copy path
+- Run scripts in integrated terminal (Python/JS/TS/Shell)
+- Draggable output panel height
+
+**Python Environment:**
+- Auto-detect system Python, venv, conda, pyenv, Windows Python Launcher
+- Browse for custom python.exe with validation
+- Create virtual environments from right-click menu
+- View installed packages (pip list) with search filter
+- Selected environment persisted across sessions
+
+**Performance:**
+- Diff caching with SHA-1 fingerprint-based invalidation
+- Event-driven git status updates (replaces constant polling)
+- Auto-symlink data directories in worktrees
 
 **UX:**
 - Git action descriptions (Fetch, Stash, Rebase, Merge, etc.)
 - "New Workspace" terminology unification
 - Settings dropdowns no longer close the dialog
 - DevTools toggle button in toolbar
-- Chinese path support (chcp 65001 UTF-8 codepage)
+- Chinese path support (UTF-8 codepage for all processes)
 - OpenRouter support for smart workspace naming
+- Auto .gitignore for research projects (data/model/GIS files)
 - Chinese user guide (GUIDE_CN.md)
 
 **Fixes:**
@@ -277,7 +306,10 @@ Found a bug or have an idea? [Open an issue](https://github.com/24kchengYe/Zync/
 - Permission mode not passed from creation dialog to CLI
 - Delete button missing from archived workspaces
 - PTY terminal type corrected to xterm-256color
-- node_modules excluded from terminal PATH
+- Global Claude Code used instead of bundled version
+- LaTeX compilation with Chinese paths
+- Project Settings dialog freezing (5s timeout)
+- File tree auto-refresh after delete/create
 
 ## Documentation
 
@@ -365,9 +397,12 @@ npx electron .
 | **智能通知** | Agent 完成、出错或等待输入时桌面提醒 |
 | **多工具支持** | Claude Code 和 Codex 原生集成，其他工具通过自定义命令添加 |
 | **文件预览** | Explorer 支持图片、PDF、视频、音频预览 |
-| **多标签编辑** | 同时打开多个文件，标签栏切换 |
+| **多标签编辑** | 同时打开多个文件，标签栏切换，右键菜单管理 |
 | **LaTeX 编译** | 内置编译预览，Ctrl+S 自动编译，可拖动分栏 |
-| **脚本执行** | Python/JS/TS/Shell 文件一键运行 |
+| **脚本执行** | 在集成终端中运行，可交互（pip install、Ctrl+C） |
+| **Python 环境** | 自动检测 venv/conda/pyenv，浏览选择，查看已装包 |
+| **文件管理** | 右键新建文件（10种类型）、文件夹、重命名、删除、复制路径 |
+| **性能优化** | 事件驱动 Git 状态更新，Diff 缓存，数据目录自动符号链接 |
 
 ## 平台支持
 
