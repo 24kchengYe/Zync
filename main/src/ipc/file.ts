@@ -1150,7 +1150,13 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
           cwd: basePath,
           timeout: 60_000,
           maxBuffer: 5 * 1024 * 1024, // 5MB
-          env: { ...process.env },
+          encoding: 'utf-8',
+          env: {
+            ...process.env,
+            PYTHONIOENCODING: 'utf-8',
+            PYTHONUTF8: '1',
+            LANG: 'zh_CN.UTF-8',
+          },
         });
 
         const output = (result.stdout || '') + (result.stderr ? '\n[stderr]\n' + result.stderr : '');
@@ -1239,6 +1245,8 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
             cwd: fileDir,
             timeout: 120_000,
             maxBuffer: 10 * 1024 * 1024, // 10MB for large log output
+            encoding: 'utf-8',
+            env: { ...process.env, LANG: 'zh_CN.UTF-8' },
           });
 
           // Check if PDF was generated
