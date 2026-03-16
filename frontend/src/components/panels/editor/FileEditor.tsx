@@ -316,6 +316,19 @@ function HeadlessFileTree({
     }
   }, [tree]);
 
+  // Auto-refresh when files change (delete, create, etc.)
+  useEffect(() => {
+    const handler = (_event: unknown, data: { sessionId: string }) => {
+      if (data.sessionId === sessionId) {
+        handleRefreshAll();
+      }
+    };
+    window.electronAPI?.on?.('file:changed', handler);
+    return () => {
+      window.electronAPI?.off?.('file:changed', handler);
+    };
+  }, [sessionId, handleRefreshAll]);
+
   // Focus input when dialog is shown
   useEffect(() => {
     if (showNewItemDialog && newItemInputRef.current) {

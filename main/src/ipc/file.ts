@@ -588,6 +588,11 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
         await fs.unlink(fullPath);
       }
 
+      // Notify frontend to refresh file tree
+      const { BrowserWindow } = require('electron');
+      const win = BrowserWindow.getAllWindows()[0];
+      win?.webContents.send('file:changed', { sessionId: request.sessionId, type: 'delete', path: normalizedPath });
+
       return { success: true };
     } catch (error) {
       console.error('Error deleting file:', error);
