@@ -37,12 +37,23 @@ export default function ProjectSettings({ project, isOpen, onClose, onUpdate, on
       setSystemPrompt(project.system_prompt || '');
       setRunScript(project.run_script || '');
       setBuildScript(project.build_script || '');
-      // Fetch the current branch when dialog opens
+      // Fetch the current branch when dialog opens — with timeout to prevent freeze
+      setCurrentBranch(null); // Reset to loading state
       if (project.path) {
+        const timeoutId = setTimeout(() => {
+          // If branch detection takes too long, show fallback
+          setCurrentBranch('(detection timed out)');
+        }, 5000);
         window.electronAPI.git.detectBranch(project.path).then((result) => {
+          clearTimeout(timeoutId);
           if (result.success && result.data) {
             setCurrentBranch(result.data);
+          } else {
+            setCurrentBranch('(unable to detect)');
           }
+        }).catch(() => {
+          clearTimeout(timeoutId);
+          setCurrentBranch('(unable to detect)');
         });
       }
       setOpenIdeCommand(project.open_ide_command || '');
