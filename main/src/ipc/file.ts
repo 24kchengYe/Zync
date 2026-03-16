@@ -1097,11 +1097,10 @@ export function registerFileHandlers(ipcMain: IpcMain, services: AppServices): v
 
       for (const compiler of compilers) {
         try {
-          console.log(`[file:compile-latex] Trying ${compiler} for ${fileName}`);
+          console.log(`[file:compile-latex] Trying ${compiler} for ${fileName} in ${fileDir}`);
           const result = await execFileAsync(compiler, [
             '-interaction=nonstopmode',
-            `-output-directory=${fileDir}`,
-            fullPath
+            fileName
           ], {
             cwd: fileDir,
             timeout: 120_000,
