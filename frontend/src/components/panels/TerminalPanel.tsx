@@ -211,8 +211,9 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = React.memo(({ panel, 
           if (e.code === 'AltRight') return false;
 
           // Ctrl/Cmd+C: if text is selected, copy to clipboard instead of sending SIGINT
-          if (ctrlOrMeta && e.key.toLowerCase() === 'c' && terminal.hasSelection()) {
-            navigator.clipboard.writeText(terminal.getSelection());
+          if (ctrlOrMeta && e.key.toLowerCase() === 'c' && terminal && terminal.hasSelection()) {
+            const selection = terminal.getSelection();
+            if (selection) navigator.clipboard.writeText(selection);
             terminal.clearSelection();
             return false; // Don't send to PTY
           }

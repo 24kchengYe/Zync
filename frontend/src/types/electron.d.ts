@@ -51,6 +51,10 @@ interface ElectronAPI {
   // System utilities
   openExternal: (url: string) => Promise<void>;
 
+  // Event listeners
+  on?: (channel: string, callback: (...args: unknown[]) => void) => void;
+  off?: (channel: string, callback: (...args: unknown[]) => void) => void;
+
   // Session management
   sessions: {
     getAll: () => Promise<IPCResponse>;
@@ -60,6 +64,7 @@ interface ElectronAPI {
     get: (sessionId: string) => Promise<IPCResponse>;
     create: (request: CreateSessionRequest) => Promise<IPCResponse>;
     delete: (sessionId: string) => Promise<IPCResponse>;
+    permanentlyDelete: (sessionId: string) => Promise<IPCResponse>;
     sendInput: (sessionId: string, input: string) => Promise<IPCResponse>;
     continue: (sessionId: string, prompt?: string, model?: string) => Promise<IPCResponse>;
     getOutput: (sessionId: string, limit?: number) => Promise<IPCResponse>;
