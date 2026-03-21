@@ -435,4 +435,4 @@ AGPL-3.0 — See [LICENSE](LICENSE)
 
 ![Visitors](https://visitor-badge.laobi.icu/badge?page_id=24kchengYe.Zync)
 
-[![Star History Chart](https://api.star-history.com/svg?repos=24kchengYe/Zync&type=Date)](https://star-history.com/#24kchengYe/Zync&Date)
+[![Star History](https://starchart.cc/24kchengYe/Zync.svg)](https://starchart.cc/24kchengYe/Zync)
