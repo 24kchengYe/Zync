@@ -2016,7 +2016,6 @@ export class DatabaseService {
             WHERE project_id = ?
               AND (archived = 0 OR archived IS NULL)
               AND folder_id IS NULL
-              AND (is_main_repo = 0 OR is_main_repo IS NULL)
           `,
             )
             .get(project.id) as {
@@ -2051,7 +2050,6 @@ export class DatabaseService {
               WHERE project_id = ?
                 AND (archived = 0 OR archived IS NULL)
                 AND folder_id IS NULL
-                AND (is_main_repo = 0 OR is_main_repo IS NULL)
               ORDER BY created_at ASC
             `,
               )
@@ -2703,7 +2701,6 @@ export class DatabaseService {
         WHERE project_id = ?
           AND (archived = 0 OR archived IS NULL)
           AND folder_id IS NULL
-          AND (is_main_repo = 0 OR is_main_repo IS NULL)
       `,
         )
         .get(data.project_id) as { max_order: number | null };
@@ -2770,13 +2767,13 @@ export class DatabaseService {
     if (projectId !== undefined) {
       return this.db
         .prepare(
-          "SELECT * FROM sessions WHERE project_id = ? AND (archived = 0 OR archived IS NULL) AND (is_main_repo = 0 OR is_main_repo IS NULL) ORDER BY display_order ASC, created_at DESC",
+          "SELECT * FROM sessions WHERE project_id = ? AND (archived = 0 OR archived IS NULL) ORDER BY display_order ASC, created_at DESC",
         )
         .all(projectId) as Session[];
     }
     return this.db
       .prepare(
-        "SELECT * FROM sessions WHERE (archived = 0 OR archived IS NULL) AND (is_main_repo = 0 OR is_main_repo IS NULL) ORDER BY display_order ASC, created_at DESC",
+        "SELECT * FROM sessions WHERE (archived = 0 OR archived IS NULL) ORDER BY display_order ASC, created_at DESC",
       )
       .all() as Session[];
   }
@@ -2784,7 +2781,7 @@ export class DatabaseService {
   getAllSessionsIncludingArchived(): Session[] {
     return this.db
       .prepare(
-        "SELECT * FROM sessions WHERE (is_main_repo = 0 OR is_main_repo IS NULL) ORDER BY created_at DESC",
+        "SELECT * FROM sessions ORDER BY created_at DESC",
       )
       .all() as Session[];
   }
@@ -2793,13 +2790,13 @@ export class DatabaseService {
     if (projectId !== undefined) {
       return this.db
         .prepare(
-          "SELECT * FROM sessions WHERE project_id = ? AND archived = 1 AND (is_main_repo = 0 OR is_main_repo IS NULL) ORDER BY updated_at DESC",
+          "SELECT * FROM sessions WHERE project_id = ? AND archived = 1 ORDER BY updated_at DESC",
         )
         .all(projectId) as Session[];
     }
     return this.db
       .prepare(
-        "SELECT * FROM sessions WHERE archived = 1 AND (is_main_repo = 0 OR is_main_repo IS NULL) ORDER BY updated_at DESC",
+        "SELECT * FROM sessions WHERE archived = 1 ORDER BY updated_at DESC",
       )
       .all() as Session[];
   }

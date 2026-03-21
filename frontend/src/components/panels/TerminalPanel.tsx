@@ -337,8 +337,11 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = React.memo(({ panel, 
           const outputHandler = (data: { panelId?: string; sessionId?: string; output?: string } | unknown) => {
             // Check if this is panel terminal output (has panelId) vs session terminal output (has sessionId)
             if (data && typeof data === 'object' && 'panelId' in data && data.panelId && 'output' in data) {
-              const typedData = data as { panelId: string; output: string };
-              if (typedData.panelId === panel.id && terminal && !disposed) {
+              const typedData = data as { panelId: string; sessionId?: string; output: string };
+              // Validate both panelId match AND sessionId match (if present) to prevent
+              // output from bleeding into wrong terminals during session switches
+              const sessionMatch = !typedData.sessionId || typedData.sessionId === panel.sessionId;
+              if (typedData.panelId === panel.id && sessionMatch && terminal && !disposed) {
                 // FIX: Send ack IMMEDIATELY when data is received, not when write completes
                 // This prevents PTY from pausing when XTerm is overwhelmed by high-frequency TUI updates
                 pendingAckBytes += typedData.output.length;

@@ -162,40 +162,32 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   }),
   
   setActiveSession: async (sessionId) => {
-    
+
     if (!sessionId) {
       set({ activeSessionId: null, activeMainRepoSession: null });
       // Notify backend about active session change for smart git status polling
-      try {
-        await window.electronAPI.invoke('sessions:set-active-session', null);
-      } catch (error) {
-        console.warn('Failed to notify backend about active session change:', error);
-      }
+      window.electronAPI.invoke('sessions:set-active-session', null).catch(() => {});
       return;
     }
-    
-    // Emit session-switched event for cleanup
-    if (get().activeSessionId !== sessionId) {
-      window.dispatchEvent(new CustomEvent('session-switched', { detail: { sessionId } }));
-      
-      // Notify backend about active session change for smart git status polling
-      try {
-        await window.electronAPI.invoke('sessions:set-active-session', sessionId);
-      } catch (error) {
-        console.warn('Failed to notify backend about active session change:', error);
-      }
-    }
-    
-    // First check if the session is already in our local store
+
+    // Set UI state immediately for instant feedback
     const state = get();
+    if (state.activeSessionId === sessionId) return; // Already active, skip
+
+    set({ activeSessionId: sessionId });
+
+    // Emit session-switched event for cleanup
+    window.dispatchEvent(new CustomEvent('session-switched', { detail: { sessionId } }));
+
+    // Notify backend in background (don't await — non-blocking)
+    window.electronAPI.invoke('sessions:set-active-session', sessionId).catch(() => {});
+
+    // First check if the session is already in our local store
     const existingSession = state.sessions.find(s => s.id === sessionId);
     
     if (existingSession) {
-      
       if (existingSession.isMainRepo) {
-        // Store main repo session separately with initialized arrays
-        set({ 
-          activeSessionId: sessionId, 
+        set({
           activeMainRepoSession: {
             ...existingSession,
             output: existingSession.output || [],
@@ -203,16 +195,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           }
         });
       } else {
-        // Regular session - just set the ID
-        set({ activeSessionId: sessionId, activeMainRepoSession: null });
+        set({ activeMainRepoSession: null });
       }
-      
-      // Only mark session as viewed if it wasn't already active
-      // This prevents the blue dot from disappearing when the session completes while you're viewing it
-      const wasAlreadyActive = state.activeSessionId === sessionId;
-      if (!wasAlreadyActive) {
-        get().markSessionAsViewed(sessionId);
-      }
+
+      get().markSessionAsViewed(sessionId);
       return;
     }
     

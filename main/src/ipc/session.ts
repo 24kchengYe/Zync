@@ -142,6 +142,16 @@ export function registerSessionHandlers(ipcMain: IpcMain, services: AppServices)
         return { success: false, error: 'Task queue not initialized' };
       }
 
+      // Block creation if a Main session already exists for this project
+      if (request.isMainRepo) {
+        const existingMain = databaseService.getMainRepoSession(targetProject.id);
+        const allSessions = databaseService.getAllSessions(targetProject.id);
+        const hasNonWorktreeSession = existingMain || allSessions.some(s => s.worktree_name === '' || s.worktree_name === 'main');
+        if (hasNonWorktreeSession) {
+          return { success: false, error: 'A Main workspace already exists for this project. Each project can only have one Main workspace that operates directly on the project directory.' };
+        }
+      }
+
       // Force count to 1 for main-repo sessions — no worktree isolation means
       // multiple panes would all operate on the same directory concurrently.
       const count = request.isMainRepo ? 1 : (request.count || 1);
@@ -258,18 +268,16 @@ export function registerSessionHandlers(ipcMain: IpcMain, services: AppServices)
         timestamp: new Date()
       });
 
-      // Kill all panel processes for this session before worktree cleanup
+      // Kill all panel processes for this session in parallel before worktree cleanup
       // This prevents leaked node-pty processes and ensures worktree removal succeeds
       const panels = panelManager.getPanelsForSession(sessionId);
-      for (const panel of panels) {
-        try {
-          if (panel.type === 'terminal') {
-            terminalPanelManager.destroyTerminal(panel.id);
-          }
-        } catch (panelError) {
-          console.error(`[Session IPC] Failed to cleanup panel ${panel.id} (${panel.type}):`, panelError);
-        }
-      }
+      const terminalPanels = panels.filter(p => p.type === 'terminal');
+      await Promise.allSettled(
+        terminalPanels.map(panel =>
+          Promise.resolve().then(() => terminalPanelManager.destroyTerminal(panel.id))
+            .catch(panelError => console.error(`[Session IPC] Failed to cleanup panel ${panel.id}:`, panelError))
+        )
+      );
 
       // Create cleanup callback for background operations
       const cleanupCallback = async () => {
