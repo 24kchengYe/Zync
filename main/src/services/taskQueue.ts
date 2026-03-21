@@ -196,6 +196,12 @@ export class TaskQueue {
         sessionName = uniqueSessionName;
         worktreeName = uniqueWorktreeName;
 
+        // Append "(Main)" suffix AFTER uniqueness so the number comes before "(Main)"
+        // e.g. "博士研究 2 (Main)" instead of "博士研究 (Main) 2"
+        if (job.data.isMainRepo && !sessionName.includes('(Main)')) {
+          sessionName = `${sessionName} (Main)`;
+        }
+
         // Get CommandRunner for this project
         const ctx = sessionManager.getProjectContextByProjectId(targetProject.id);
         if (!ctx) {

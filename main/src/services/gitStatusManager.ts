@@ -50,6 +50,7 @@ export class GitStatusManager extends EventEmitter {
   // Track active session and window visibility for optimized refreshes
   private activeSessionId: string | null = null;
   private isWindowVisible = true;
+  private activeSessionDebounceTimer: NodeJS.Timeout | null = null;
 
   // PR data cache
   private prCache = new Map<string, { prNumber?: number; prUrl?: string; prTitle?: string; prState?: string; prBody?: string; fetchedAt: number }>();
@@ -85,25 +86,37 @@ export class GitStatusManager extends EventEmitter {
   setActiveSession(sessionId: string | null): void {
     const previousActive = this.activeSessionId;
     this.activeSessionId = sessionId;
-    
+
     if (previousActive !== sessionId) {
       console.log(`[GitStatus] Active session changed from ${previousActive} to ${sessionId}`);
-      
-      // Start watching the active session's files if we have one
-      if (sessionId) {
-        this.startWatchingSession(sessionId);
-        
-        // If window is visible, also refresh immediately
-        if (this.isWindowVisible) {
-          this.refreshSessionGitStatus(sessionId, false).catch(error => {
-            console.warn(`[GitStatus] Failed to refresh active session ${sessionId}:`, error);
-          });
-        }
-      }
-      
+
       // Stop watching the previous active session if it exists
       if (previousActive) {
         this.stopWatchingSession(previousActive);
+      }
+
+      // Cancel any pending debounced refresh from a previous rapid switch
+      if (this.activeSessionDebounceTimer) {
+        clearTimeout(this.activeSessionDebounceTimer);
+        this.activeSessionDebounceTimer = null;
+      }
+
+      // Start watching the active session's files if we have one
+      if (sessionId) {
+        this.startWatchingSession(sessionId);
+
+        // Debounce the git status refresh to avoid redundant work during rapid switching
+        if (this.isWindowVisible) {
+          this.activeSessionDebounceTimer = setTimeout(() => {
+            this.activeSessionDebounceTimer = null;
+            // Only refresh if this session is still the active one
+            if (this.activeSessionId === sessionId) {
+              this.refreshSessionGitStatus(sessionId, false).catch(error => {
+                console.warn(`[GitStatus] Failed to refresh active session ${sessionId}:`, error);
+              });
+            }
+          }, 150);
+        }
       }
     }
   }
