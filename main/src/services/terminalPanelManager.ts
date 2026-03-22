@@ -523,7 +523,7 @@ export class TerminalPanelManager {
       ...state.customState,
       isInitialized: true,
       cwd: cwd,
-      scrollbackBuffer: terminal.scrollbackBuffer,
+      scrollbackBuffer: '', // Don't persist scrollback across app restarts
       commandHistory: terminal.commandHistory.slice(-100), // Keep last 100 commands
       lastActivityTime: terminal.lastActivity.toISOString(),
       lastActiveCommand: terminal.currentCommand

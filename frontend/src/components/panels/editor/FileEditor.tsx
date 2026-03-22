@@ -748,8 +748,9 @@ function HeadlessFileTree({
 
   // Auto-refresh when files change (delete, create, etc.)
   useEffect(() => {
-    const handler = (_event: unknown, data: { sessionId: string }) => {
-      if (data.sessionId === sessionId) {
+    const handler = (...args: unknown[]) => {
+      const data = args[1] as { sessionId: string } | undefined;
+      if (data?.sessionId === sessionId) {
         handleRefreshAll();
       }
     };
