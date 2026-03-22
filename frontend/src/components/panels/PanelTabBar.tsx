@@ -1,12 +1,12 @@
 import React, { useCallback, memo, useState, useRef, useEffect, useMemo } from 'react';
-import { Plus, X, Terminal, ChevronDown, ChevronRight, GitBranch, FileCode, BarChart3, Edit2, PanelRight, FolderTree, TerminalSquare, Play, Cpu, RefreshCw, Bug } from 'lucide-react';
+import { Plus, X, Terminal, ChevronDown, ChevronRight, GitBranch, FileCode, BarChart3, Edit2, PanelRight, FolderTree, TerminalSquare, Play, Cpu, RefreshCw, Bug, List } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { cn } from '../../utils/cn';
 import { useHotkey } from '../../hooks/useHotkey';
 import { PanelTabBarProps, PanelCreateOptions } from '../../types/panelComponents';
 import { ToolPanel, ToolPanelType, PANEL_CAPABILITIES, LogsPanelState } from '../../../../shared/types/panels';
 import { useSession } from '../../contexts/SessionContext';
-import { StatusIndicator } from '../StatusIndicator';
+// StatusIndicator import removed — session identity label was removed from tab bar
 import { useConfigStore } from '../../stores/configStore';
 import { formatKeyDisplay } from '../../utils/hotkeyUtils';
 import { useHotkeyStore } from '../../stores/hotkeyStore';
@@ -66,6 +66,11 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
   const customInputRef = useRef<HTMLInputElement>(null);
   const [, setFocusedDropdownIndex] = useState(-1);
   const dropdownItemsRef = useRef<(HTMLButtonElement | HTMLInputElement | null)[]>([]);
+  const [showPanelList, setShowPanelList] = useState(false);
+  const panelListRef = useRef<HTMLDivElement>(null);
+  const [listEditingId, setListEditingId] = useState<string | null>(null);
+  const [listEditingTitle, setListEditingTitle] = useState('');
+  const listEditInputRef = useRef<HTMLInputElement>(null);
 
   // Resource monitor state
   const [showResourcePopover, setShowResourcePopover] = useState(false);
@@ -257,6 +262,35 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
     }
   }, [showDropdown]);
 
+  // Close panel list when clicking outside
+  // Use a portal-aware ref to include the dropdown body rendered via createPortal
+  const panelListPortalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showPanelList) {
+      setListEditingId(null);
+      setListEditingTitle('');
+      return;
+    }
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const inTrigger = panelListRef.current?.contains(target);
+      const inPortal = panelListPortalRef.current?.contains(target);
+      if (!inTrigger && !inPortal) {
+        setShowPanelList(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showPanelList]);
+
+  // Auto-focus the rename input in panel list
+  useEffect(() => {
+    if (listEditingId && listEditInputRef.current) {
+      listEditInputRef.current.focus();
+      listEditInputRef.current.select();
+    }
+  }, [listEditingId]);
+
   // Auto-focus custom command input when shown
   useEffect(() => {
     if (showCustomInput && customInputRef.current) {
@@ -394,18 +428,16 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
         role="tablist"
         aria-label="Panel Tabs"
       >
-        {/* Session identity */}
-        {session && (
-          <div className="flex items-center gap-2 px-2 mr-1 flex-shrink-0 border-r border-border-primary">
-            <StatusIndicator session={session} size="small" />
-            <span className="text-sm text-text-secondary truncate min-w-0 select-none" style={{ maxWidth: '140px' }}>
-              {sessionContext?.projectName || session.name}
-            </span>
-          </div>
-        )}
-
-        {/* Scrollable tab area */}
-        <div className="flex items-center gap-x-1 overflow-x-auto scrollbar-none min-w-0 flex-1">
+        {/* Scrollable tab area — mouse wheel scrolls horizontally */}
+        <div
+          className="flex items-center gap-x-1 overflow-x-auto scrollbar-none min-w-0 flex-1"
+          onWheel={(e) => {
+            if (e.deltaY !== 0) {
+              e.currentTarget.scrollLeft += e.deltaY;
+              e.preventDefault();
+            }
+          }}
+        >
           {/* Render panel tabs */}
           {sortedPanels.map((panel, index) => {
           const isPermanent = panel.metadata?.permanent === true;
@@ -486,6 +518,122 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
         })}
 
         </div>
+
+        {/* Panel list dropdown — quick overview & jump when many tabs are open */}
+        {sortedPanels.length > 3 && (
+          <div className="relative h-9 flex items-center ml-1 flex-shrink-0" ref={panelListRef}>
+            <Tooltip content="All panels" side="bottom">
+              <button
+                className="inline-flex items-center h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-hover rounded transition-colors"
+                onClick={() => setShowPanelList(!showPanelList)}
+              >
+                <List className="w-4 h-4" />
+                <span className="text-[10px] ml-1 tabular-nums">{sortedPanels.length}</span>
+              </button>
+            </Tooltip>
+            {showPanelList && createPortal(
+              <div
+                ref={panelListPortalRef}
+                className="fixed bg-surface-primary border border-border-subtle/60 rounded-lg shadow-dropdown-elevated backdrop-blur-sm py-1 w-[240px] max-h-[400px] overflow-y-auto z-[9999]"
+                style={{
+                  top: (panelListRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
+                  left: panelListRef.current?.getBoundingClientRect().left ?? 0,
+                }}
+              >
+                {sortedPanels.map(panel => {
+                  const isActive = activePanel?.id === panel.id;
+                  const isDiff = panel.type === 'diff';
+                  const title = isDiff ? 'Diff' : panel.title;
+                  const isPermanent = panel.metadata?.permanent === true;
+                  const isListEditing = listEditingId === panel.id;
+                  const canRename = panel.type !== 'diff' && panel.type !== 'explorer';
+
+                  const submitListRename = async () => {
+                    if (listEditingId && listEditingTitle.trim()) {
+                      try {
+                        await window.electron?.invoke('panels:update', listEditingId, { title: listEditingTitle.trim() });
+                        const p = panels.find(pp => pp.id === listEditingId);
+                        if (p) p.title = listEditingTitle.trim();
+                      } catch { /* ignore */ }
+                    }
+                    setListEditingId(null);
+                    setListEditingTitle('');
+                  };
+
+                  return (
+                    <div
+                      key={panel.id}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer group",
+                        isActive
+                          ? "bg-interactive/10 text-text-primary"
+                          : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+                      )}
+                      onClick={() => {
+                        if (!isListEditing) {
+                          onPanelSelect(panel);
+                          setShowPanelList(false);
+                        }
+                      }}
+                    >
+                      <span className="flex-shrink-0 opacity-70">{getPanelIcon(panel.type)}</span>
+                      {isListEditing ? (
+                        <input
+                          ref={listEditInputRef}
+                          className="flex-1 min-w-0 bg-surface-secondary border border-border-primary rounded px-1.5 py-0.5 text-sm text-text-primary outline-none focus:border-interactive"
+                          value={listEditingTitle}
+                          onChange={(e) => setListEditingTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') submitListRename();
+                            else if (e.key === 'Escape') { setListEditingId(null); setListEditingTitle(''); }
+                          }}
+                          onBlur={submitListRename}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <span
+                          className="truncate flex-1"
+                          onDoubleClick={(e) => {
+                            if (canRename) {
+                              e.stopPropagation();
+                              setListEditingId(panel.id);
+                              setListEditingTitle(panel.title);
+                            }
+                          }}
+                        >
+                          {title}
+                        </span>
+                      )}
+                      {!isPermanent && !isListEditing && (
+                        <button
+                          className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-surface-active rounded transition-opacity flex-shrink-0"
+                          onClick={(e) => { e.stopPropagation(); onPanelClose(panel); }}
+                          title="Close panel"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                      {canRename && !isListEditing && (
+                        <button
+                          className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-surface-active rounded transition-opacity flex-shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setListEditingId(panel.id);
+                            setListEditingTitle(panel.title);
+                          }}
+                          title="Rename"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>,
+              document.body
+            )}
+          </div>
+        )}
 
         {/* Add Panel dropdown button - outside overflow container so dropdown isn't clipped */}
         <div className="relative h-9 flex items-center ml-1 flex-shrink-0" ref={dropdownRef}>

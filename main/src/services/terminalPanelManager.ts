@@ -42,6 +42,10 @@ export class TerminalPanelManager {
   private readonly MAX_SCROLLBACK_LINES = 10000;
   private analyticsManager: AnalyticsManager | null = null;
 
+  // Throttled session activity updates — avoid writing DB on every PTY byte
+  private sessionActivityTimers = new Map<string, NodeJS.Timeout>();
+  private readonly SESSION_ACTIVITY_THROTTLE_MS = 30_000; // Update DB at most every 30s per session
+
   // Spawn concurrency limiter — prevents CPU spikes when many terminals init at once
   private activeSpawns = 0;
   private spawnQueue: Array<{ resolve: () => void; priority: number }> = [];
@@ -320,6 +324,24 @@ export class TerminalPanelManager {
     terminal.pty.onData((data: string) => {
       // Update last activity
       terminal.lastActivity = new Date();
+
+      // Throttled session updated_at update — keeps sidebar "active X ago" fresh
+      if (!this.sessionActivityTimers.has(terminal.sessionId)) {
+        this.sessionActivityTimers.set(terminal.sessionId, setTimeout(() => {
+          this.sessionActivityTimers.delete(terminal.sessionId);
+          try {
+            databaseService.touchSessionUpdatedAt(terminal.sessionId);
+            // Notify frontend so the sidebar tooltip shows fresh "active X ago"
+            const updatedSession = databaseService.getSession(terminal.sessionId);
+            if (updatedSession && mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('session-updated', {
+                ...updatedSession,
+                lastActivity: updatedSession.updated_at
+              });
+            }
+          } catch { /* ignore — session may have been archived */ }
+        }, this.SESSION_ACTIVITY_THROTTLE_MS));
+      }
       
       // Add to scrollback buffer
       this.addToScrollback(terminal, data);
