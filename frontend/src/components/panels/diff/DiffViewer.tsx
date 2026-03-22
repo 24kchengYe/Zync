@@ -177,9 +177,14 @@ const DiffViewer = memo(forwardRef<DiffViewerHandle, DiffViewerProps>(({ files, 
   useEffect(() => {
     if (fingerprint !== prevFingerprintRef.current) {
       prevFingerprintRef.current = fingerprint;
+      // Auto-expand only when file count is small (≤10).
+      // For large diffs, default to collapsed to avoid rendering
+      // hundreds of syntax-highlighted diff views at once.
       const initial = new Set<number>();
-      for (let i = 0; i < files.length; i++) {
-        initial.add(i);
+      if (files.length <= 10) {
+        for (let i = 0; i < files.length; i++) {
+          initial.add(i);
+        }
       }
       setExpandedFiles(initial);
     }

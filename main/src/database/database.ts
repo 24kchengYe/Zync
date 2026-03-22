@@ -2928,6 +2928,12 @@ export class DatabaseService {
     return this.getSession(id);
   }
 
+  touchSessionUpdatedAt(id: string): void {
+    this.db
+      .prepare("UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .run(id);
+  }
+
   markSessionAsViewed(id: string): Session | undefined {
     this.db
       .prepare(
