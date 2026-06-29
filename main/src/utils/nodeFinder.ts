@@ -242,6 +242,10 @@ export function findCliNodeScript(cliExecutablePath: string): string | null {
         'codex': {
           patterns: ['@openai+codex@', 'openai-codex@'],
           entryFiles: ['bin/codex.js', 'cli.js', 'dist/index.js', 'index.js']
+        },
+        'copilot': {
+          patterns: ['@github+copilot@'],
+          entryFiles: ['index.js', 'dist/index.js', 'cli.js']
         }
       };
 
@@ -313,12 +317,14 @@ export function findCliNodeScript(cliExecutablePath: string): string | null {
       // Global npm install pattern (same directory as bin stub)
       path.join(binDir, 'node_modules', '@openai/codex/bin/codex.js'),
       path.join(binDir, 'node_modules', '@anthropic-ai/claude-code/cli.js'),
+      path.join(binDir, 'node_modules', '@github/copilot/index.js'),
       path.join(binDir, 'node_modules', commandName, 'cli.js'),
       path.join(binDir, 'node_modules', commandName, 'bin', `${commandName}.js`),
       // Local npm install pattern (node_modules/.bin/../<package>)
       path.join(nodeModulesDir, '@anthropic-ai/claude-code/cli.js'),
       path.join(nodeModulesDir, '@openai/codex/bin/codex.js'),
       path.join(nodeModulesDir, '@openai/codex/cli.js'),
+      path.join(nodeModulesDir, '@github/copilot/index.js'),
       path.join(nodeModulesDir, commandName, 'cli.js'),
       path.join(nodeModulesDir, commandName, 'dist/index.js'),
       path.join(nodeModulesDir, commandName, 'index.js'),
@@ -331,6 +337,7 @@ export function findCliNodeScript(cliExecutablePath: string): string | null {
       path.join(binDir, '../lib/node_modules/@anthropic-ai/claude-code/dist/index.js'),
       path.join(binDir, '../lib/node_modules/@openai/codex/bin/codex.js'),
       path.join(binDir, '../lib/node_modules/@openai/codex/dist/index.js'),
+      path.join(binDir, '../lib/node_modules/@github/copilot/index.js'),
     ];
 
     for (const scriptPath of possibleScriptPaths) {

@@ -74,7 +74,7 @@ You open a terminal, start Claude Code, give it a task, and... wait. You want to
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) >= 22.14.0, [pnpm](https://pnpm.io/) >= 8, [Git](https://git-scm.com/)
-- At least one AI agent: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), or [Aider](https://aider.chat/)
+- At least one AI agent: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), [Copilot CLI](https://github.com/github/copilot-cli), or [Aider](https://aider.chat/)
 
 ### Install & Launch
 

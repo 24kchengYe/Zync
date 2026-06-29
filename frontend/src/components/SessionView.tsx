@@ -23,7 +23,7 @@ import { PanelContainer } from './panels/PanelContainer';
 import { SessionProvider } from '../contexts/SessionContext';
 import { ToolPanel, ToolPanelType, PANEL_CAPABILITIES } from '../../../shared/types/panels';
 import { PanelCreateOptions } from '../types/panelComponents';
-import { Download, Upload, GitMerge, GitPullRequestArrow, Code2, Terminal, GripHorizontal, ChevronDown, ChevronUp, RefreshCw, Archive, ArchiveRestore, GitCommitHorizontal, MessageSquare, TerminalSquare } from 'lucide-react';
+import { Download, Upload, GitMerge, GitPullRequestArrow, Code2, Terminal, GripHorizontal, ChevronDown, ChevronUp, RefreshCw, Archive, ArchiveRestore, GitCommitHorizontal, MessageSquare, TerminalSquare, Bot } from 'lucide-react';
 import type { Project } from '../types/project';
 import { devLog, renderLog } from '../utils/console';
 import { useConfigStore } from '../stores/configStore';
@@ -333,6 +333,18 @@ export const SessionView = memo(() => {
     action: () => handlePanelCreate('terminal', {
       initialCommand: 'codex',
       title: 'Codex CLI'
+    }),
+  });
+
+  useHotkey({
+    id: 'add-tool-terminal-copilot',
+    label: 'Add Terminal (Copilot)',
+    keys: '',
+    category: 'tools',
+    enabled: () => isInSessionView,
+    action: () => handlePanelCreate('terminal', {
+      initialCommand: activeSession?.permissionMode === 'approve' ? 'copilot' : 'copilot --allow-all-tools',
+      title: 'Copilot CLI'
     }),
   });
 
@@ -1192,6 +1204,20 @@ export const SessionView = memo(() => {
                       >
                         <Code2 className="w-3 h-3" />
                         Codex
+                      </button>
+                    </Tooltip>
+
+                    {/* Copilot pill */}
+                    <Tooltip content={hotkeyDisplay('add-tool-terminal-copilot') ? <Kbd>{hotkeyDisplay('add-tool-terminal-copilot')}</Kbd> : undefined} side="top">
+                      <button
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium text-text-tertiary border border-border-primary hover:bg-surface-hover hover:text-text-secondary transition-colors whitespace-nowrap flex-shrink-0"
+                        onClick={() => handlePanelCreate('terminal', {
+                          initialCommand: activeSession?.permissionMode === 'approve' ? 'copilot' : 'copilot --allow-all-tools',
+                          title: 'Copilot CLI'
+                        })}
+                      >
+                        <Bot className="w-3 h-3" />
+                        Copilot
                       </button>
                     </Tooltip>
 
