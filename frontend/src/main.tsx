@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { I18nProvider } from '../../UpdateWuruize/frontend/I18nContext';
 import './index.css';
 import './styles/markdown-preview.css';
 import './styles/notebook-preview.css';
@@ -26,7 +27,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
       <ThemeProvider>
-        <App />
+        <I18nProvider>
+          <App />
+        </I18nProvider>
       </ThemeProvider>
     </ErrorBoundary>
   </React.StrictMode>,

@@ -51,3 +51,23 @@ export interface ProjectDashboardError {
   message: string;
   details?: string;
 }
+
+export type BatchActionType = 'stop' | 'git-status' | 'run-tests' | 'save-snapshot';
+
+export type BatchResultStatus = 'queued' | 'success' | 'failed' | 'skipped';
+
+export interface BatchControlResult {
+  sessionId: string;
+  workspaceLabel: string;
+  status: BatchResultStatus;
+  detail: string;
+}
+
+export interface BatchControlRun {
+  action: BatchActionType;
+  createdAt: string;
+  targetedCount: number;
+  command?: string;
+  note?: string;
+  results: BatchControlResult[];
+}

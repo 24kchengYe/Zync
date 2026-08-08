@@ -33,8 +33,28 @@ import { Tooltip } from './ui/Tooltip';
 import { Kbd } from './ui/Kbd';
 import { useErrorStore } from '../stores/errorStore';
 import ProjectSettings from './ProjectSettings';
+import { ProjectContextBanner } from '../../../UpdateWuruize/frontend/ProjectContextBanner';
+import { interpolateTranslation, useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import {
+  ALL_WORKSPACE_LAYOUT_SLOTS,
+  DEFAULT_WORKSPACE_LAYOUT_DEMO_STATE,
+  DEFAULT_WORKSPACE_LAYOUT_SPLIT_RATIO,
+  getNextWorkspaceLayoutFocusSlot,
+  getWorkspaceLayoutFocusSlots,
+  getWorkspacePersistenceKey,
+  MAX_WORKSPACE_LAYOUT_SPLIT_RATIO,
+  MIN_WORKSPACE_LAYOUT_SPLIT_RATIO,
+  loadWorkspaceLayoutDemoState,
+  normalizeWorkspaceLayoutDemoState,
+  saveWorkspaceLayoutDemoState,
+  type WorkspaceLayoutFocusSlot,
+  type WorkspaceLayoutMode,
+  type WorkspaceLayoutSlot,
+} from '../../../UpdateWuruize/frontend/WorkspaceLayoutDemoState';
+import { WorkspaceLayoutSurface } from '../../../UpdateWuruize/frontend/WorkspaceLayoutSurface';
 
 export const SessionView = memo(() => {
+  const { t } = useI18n();
   const { activeView, activeProjectId } = useNavigationStore();
   const [projectData, setProjectData] = useState<Project | null>(null);
   const [isProjectLoading, setIsProjectLoading] = useState(false);
@@ -186,8 +206,8 @@ export const SessionView = memo(() => {
   }, [tabBarPanels]);
 
   const currentActivePanel = useMemo(
-    () => sessionPanels.find(p => p.id === activePanels[activeSession?.id || '']),
-    [sessionPanels, activePanels, activeSession?.id]
+    () => sortedSessionPanels.find(p => p.id === activePanels[activeSession?.id || '']) || sortedSessionPanels[0],
+    [sortedSessionPanels, activePanels, activeSession?.id]
   );
 
   // Track current session/panel in history when they change
@@ -347,10 +367,18 @@ export const SessionView = memo(() => {
   const handlePanelClose = useCallback(
     async (panel: ToolPanel) => {
       if (!activeSession) return;
-      
-      // Find next panel to activate
-      const panelIndex = sessionPanels.findIndex(p => p.id === panel.id);
-      const nextPanel = sessionPanels[panelIndex + 1] || sessionPanels[panelIndex - 1];
+
+      const remainingPanels = sessionPanels.filter((current) => current.id !== panel.id);
+      const remainingCenterPanels = remainingPanels.filter(
+        (current) => current.id !== defaultTerminalPanel?.id,
+      );
+      const closingIndex = sortedSessionPanels.findIndex((current) => current.id === panel.id);
+      const nextPanel =
+        remainingCenterPanels[closingIndex] ||
+        remainingCenterPanels[closingIndex - 1] ||
+        remainingCenterPanels[0] ||
+        remainingPanels.find((current) => current.id !== defaultTerminalPanel?.id) ||
+        (defaultTerminalPanel && defaultTerminalPanel.id !== panel.id ? defaultTerminalPanel : undefined);
       
       // Remove from store first for immediate UI update
       removePanel(activeSession.id, panel.id);
@@ -364,7 +392,7 @@ export const SessionView = memo(() => {
       // Delete on backend
       await panelApi.deletePanel(panel.id);
     },
-    [activeSession, sessionPanels, removePanel, setActivePanelInStore]
+    [activeSession, sessionPanels, sortedSessionPanels, defaultTerminalPanel, removePanel, setActivePanelInStore]
   );
 
   const handlePanelCreate = useCallback(
@@ -596,11 +624,219 @@ export const SessionView = memo(() => {
     const stored = localStorage.getItem('pane-detail-panel-visible');
     return stored !== null ? stored === 'true' : true;
   });
+  const [workspaceLayoutState, setWorkspaceLayoutState] = useState(
+    DEFAULT_WORKSPACE_LAYOUT_DEMO_STATE,
+  );
+  const loadedWorkspaceLayoutStorageKeyRef = useRef<string | null>(null);
+  const workspaceLayoutStorageKey = useMemo(
+    () =>
+      activeSession
+        ? getWorkspacePersistenceKey({
+            sessionId: activeSession.id,
+            projectId: activeSession.projectId,
+            workspaceName: activeSession.name,
+            worktreePath: activeSession.worktreePath,
+          })
+        : null,
+    [
+      activeSession?.id,
+      activeSession?.name,
+      activeSession?.projectId,
+      activeSession?.worktreePath,
+    ],
+  );
 
   // Persist detail panel visibility
   useEffect(() => {
     localStorage.setItem('pane-detail-panel-visible', String(detailVisible));
   }, [detailVisible]);
+
+  useEffect(() => {
+    if (!activeSession?.id || !workspaceLayoutStorageKey) return;
+    loadedWorkspaceLayoutStorageKeyRef.current = workspaceLayoutStorageKey;
+    setWorkspaceLayoutState(
+      loadWorkspaceLayoutDemoState(workspaceLayoutStorageKey, {
+        legacyStorageKeys: [activeSession.id],
+      }),
+    );
+  }, [activeSession?.id, workspaceLayoutStorageKey]);
+
+  const normalizedWorkspaceLayoutState = useMemo(
+    () => normalizeWorkspaceLayoutDemoState(
+      workspaceLayoutState,
+      currentActivePanel?.id ?? null,
+      sortedSessionPanels,
+    ),
+    [workspaceLayoutState, currentActivePanel?.id, sortedSessionPanels],
+  );
+
+  useEffect(() => {
+    if (
+      workspaceLayoutState.mode !== normalizedWorkspaceLayoutState.mode ||
+      workspaceLayoutState.splitRatio !== normalizedWorkspaceLayoutState.splitRatio ||
+      workspaceLayoutState.secondarySplitRatio !==
+        normalizedWorkspaceLayoutState.secondarySplitRatio ||
+      workspaceLayoutState.focusSlot !== normalizedWorkspaceLayoutState.focusSlot ||
+      JSON.stringify(workspaceLayoutState.slotAssignments) !==
+        JSON.stringify(normalizedWorkspaceLayoutState.slotAssignments)
+    ) {
+      setWorkspaceLayoutState(normalizedWorkspaceLayoutState);
+    }
+  }, [
+    normalizedWorkspaceLayoutState,
+    workspaceLayoutState.focusSlot,
+    workspaceLayoutState.mode,
+    workspaceLayoutState.secondarySplitRatio,
+    workspaceLayoutState.slotAssignments,
+    workspaceLayoutState.splitRatio,
+  ]);
+
+  useEffect(() => {
+    if (!activeSession?.id || !workspaceLayoutStorageKey) return;
+    if (loadedWorkspaceLayoutStorageKeyRef.current !== workspaceLayoutStorageKey) return;
+    saveWorkspaceLayoutDemoState(
+      workspaceLayoutStorageKey,
+      normalizedWorkspaceLayoutState,
+      sortedSessionPanels,
+    );
+  }, [
+    activeSession?.id,
+    normalizedWorkspaceLayoutState,
+    sortedSessionPanels,
+    workspaceLayoutStorageKey,
+  ]);
+
+  const workspaceLayoutViewState = normalizedWorkspaceLayoutState;
+
+  const workspaceLayoutPanels = useMemo(() => {
+    const panelsById = new Map(sortedSessionPanels.map((panel) => [panel.id, panel]));
+    return Object.fromEntries(
+      Object.entries(workspaceLayoutViewState.slotAssignments).flatMap(([slot, panelId]) => {
+        const panel = panelsById.get(panelId);
+        return panel ? [[slot as WorkspaceLayoutSlot, panel] as const] : [];
+      }),
+    ) as Partial<Record<WorkspaceLayoutSlot, ToolPanel>>;
+  }, [sortedSessionPanels, workspaceLayoutViewState.slotAssignments]);
+
+  const handleLayoutModeChange = useCallback((mode: WorkspaceLayoutMode) => {
+    setWorkspaceLayoutState((current) => ({
+      ...current,
+      mode,
+    }));
+  }, []);
+
+  const handleLayoutSplitRatioChange = useCallback((splitRatio: number) => {
+    setWorkspaceLayoutState((current) => ({
+      ...current,
+      splitRatio: Math.min(
+        MAX_WORKSPACE_LAYOUT_SPLIT_RATIO,
+        Math.max(MIN_WORKSPACE_LAYOUT_SPLIT_RATIO, splitRatio),
+      ),
+    }));
+  }, []);
+
+  const handleLayoutSecondarySplitRatioChange = useCallback((secondarySplitRatio: number) => {
+    setWorkspaceLayoutState((current) => ({
+      ...current,
+      secondarySplitRatio: Math.min(
+        MAX_WORKSPACE_LAYOUT_SPLIT_RATIO,
+        Math.max(MIN_WORKSPACE_LAYOUT_SPLIT_RATIO, secondarySplitRatio),
+      ),
+    }));
+  }, []);
+
+  const focusWorkspaceLayoutSlot = useCallback(
+    (focusSlot: WorkspaceLayoutFocusSlot) => {
+      setWorkspaceLayoutState((current) => ({
+        ...current,
+        focusSlot,
+      }));
+
+      const panelId = workspaceLayoutViewState.slotAssignments[focusSlot];
+      if (!panelId) {
+        return;
+      }
+
+      const panel = sortedSessionPanels.find((item) => item.id === panelId);
+      if (panel && panel.id !== currentActivePanel?.id) {
+        void handlePanelSelect(panel);
+      }
+    },
+    [
+      currentActivePanel?.id,
+      handlePanelSelect,
+      sortedSessionPanels,
+      workspaceLayoutViewState.slotAssignments,
+    ],
+  );
+
+  const handleLayoutSlotPanelChange = useCallback(
+    (slot: WorkspaceLayoutSlot, panelId: string) => {
+      setWorkspaceLayoutState((current) => {
+        const nextAssignments = { ...current.slotAssignments };
+        for (const existingSlot of ALL_WORKSPACE_LAYOUT_SLOTS) {
+          if (nextAssignments[existingSlot] === panelId) {
+            delete nextAssignments[existingSlot];
+          }
+        }
+
+        nextAssignments[slot] = panelId;
+
+        return {
+          ...current,
+          slotAssignments: nextAssignments,
+          focusSlot: slot,
+        };
+      });
+
+      const panel = sortedSessionPanels.find((item) => item.id === panelId);
+      if (panel) {
+        void handlePanelSelect(panel);
+      }
+    },
+    [handlePanelSelect, sortedSessionPanels],
+  );
+
+  const layoutFocusSlots = useMemo(
+    () => getWorkspaceLayoutFocusSlots(workspaceLayoutViewState),
+    [workspaceLayoutViewState],
+  );
+
+  const cycleLayoutFocus = useCallback(
+    (direction: 'next' | 'prev') => {
+      if (layoutFocusSlots.length < 2) {
+        return;
+      }
+
+      focusWorkspaceLayoutSlot(
+        getNextWorkspaceLayoutFocusSlot(workspaceLayoutViewState, direction),
+      );
+    },
+    [focusWorkspaceLayoutSlot, layoutFocusSlots.length, workspaceLayoutViewState],
+  );
+
+  useEffect(() => {
+    if (!currentActivePanel) {
+      return;
+    }
+
+    const matchedSlot = Object.entries(workspaceLayoutViewState.slotAssignments).find(
+      ([, panelId]) => panelId === currentActivePanel.id,
+    )?.[0] as WorkspaceLayoutSlot | undefined;
+
+    if (!matchedSlot || matchedSlot === workspaceLayoutState.focusSlot) {
+      return;
+    }
+
+    setWorkspaceLayoutState((current) => ({
+      ...current,
+      focusSlot: matchedSlot,
+    }));
+  }, [
+    currentActivePanel,
+    workspaceLayoutState.focusSlot,
+    workspaceLayoutViewState.slotAssignments,
+  ]);
 
   // Right-side resizable
   const { width: detailWidth, startResize: startDetailResize } = useResizable({
@@ -683,6 +919,24 @@ export const SessionView = memo(() => {
     action: () => setDetailVisible(v => !v),
   });
 
+  useHotkey({
+    id: 'focus-layout-pane-prev',
+    label: t('workspaceLayout.hotkeys.focusPrev'),
+    keys: 'mod+alt+h',
+    category: 'view',
+    enabled: () => isInSessionView && layoutFocusSlots.length > 1,
+    action: () => cycleLayoutFocus('prev'),
+  });
+
+  useHotkey({
+    id: 'focus-layout-pane-next',
+    label: t('workspaceLayout.hotkeys.focusNext'),
+    keys: 'mod+alt+l',
+    category: 'view',
+    enabled: () => isInSessionView && layoutFocusSlots.length > 1,
+    action: () => cycleLayoutFocus('next'),
+  });
+
   // Create branch actions for the panel bar
   const branchActions = useMemo(() => {
     if (!activeSession) return [];
@@ -690,56 +944,58 @@ export const SessionView = memo(() => {
     return activeSession.isMainRepo ? [
       {
         id: 'pull',
-        label: 'Pull from Remote',
+        label: t('sessionView.branchAction.pullFromRemote'),
         icon: Download,
         onClick: hook.handleGitPull,
         disabled: hook.isMerging || activeSession.status === 'running' || activeSession.status === 'initializing',
         variant: 'default' as const,
-        description: 'Download latest from remote'
+        description: t('sessionView.branchAction.description.downloadLatest')
       },
       {
         id: 'push',
-        label: 'Push to Remote', 
+        label: t('sessionView.branchAction.pushToRemote'), 
         icon: Upload,
         onClick: hook.handleGitPush,
         disabled: hook.isMerging || activeSession.status === 'running' || activeSession.status === 'initializing',
         variant: 'success' as const,
-        description: 'Upload your changes to remote'
+        description: t('sessionView.branchAction.description.uploadChanges')
       }
     ] : [
       // --- Sync ---
       {
         id: 'fetch',
-        label: 'Fetch',
+        label: t('sessionView.branchAction.fetch'),
         icon: RefreshCw,
         onClick: hook.handleGitFetch,
         disabled: hook.isMerging || activeSession.status === 'running' || activeSession.status === 'initializing',
         variant: 'default' as const,
-        description: 'Check for remote updates'
+        description: t('sessionView.branchAction.description.checkRemote')
       },
       // --- Update working tree ---
       {
         id: 'stash',
-        label: 'Stash',
+        label: t('sessionView.branchAction.stash'),
         icon: Archive,
         onClick: hook.handleGitStash,
         disabled: hook.isMerging || activeSession.status === 'running' || activeSession.status === 'initializing' || !activeSession.gitStatus?.hasUncommittedChanges,
         variant: 'default' as const,
-        description: 'Temporarily save uncommitted changes'
+        description: t('sessionView.branchAction.description.temporarySave')
       },
       {
         id: 'stash-pop',
-        label: 'Pop',
+        label: t('sessionView.branchAction.pop'),
         icon: ArchiveRestore,
         onClick: hook.handleGitStashPop,
         disabled: hook.isMerging || activeSession.status === 'running' || activeSession.status === 'initializing' || !hook.hasStash,
         variant: 'default' as const,
-        description: hook.hasStash ? 'Apply and remove most recent stash' : 'No stash to pop'
+        description: hook.hasStash
+          ? t('sessionView.branchAction.description.applyLatestStash')
+          : t('sessionView.branchAction.description.noStash')
       },
       // --- Commit & push ---
       {
         id: 'commit',
-        label: 'Commit',
+        label: t('sessionView.branchAction.commit'),
         icon: GitCommitHorizontal,
         shortcut: 'mod+shift+k',
         onClick: () => {
@@ -748,52 +1004,56 @@ export const SessionView = memo(() => {
         },
         disabled: hook.isMerging || activeSession.status === 'running' || activeSession.status === 'initializing' || (!activeSession.gitStatus?.hasUncommittedChanges && !activeSession.gitStatus?.hasUntrackedFiles),
         variant: 'default' as const,
-        description: 'Save a version snapshot'
+        description: t('sessionView.branchAction.description.saveSnapshot')
       },
       {
         id: 'pull',
-        label: 'Pull',
+        label: t('sessionView.branchAction.pull'),
         icon: Download,
         shortcut: 'mod+shift+l',
         onClick: hook.handleGitPull,
         disabled: hook.isMerging || activeSession.status === 'running' || activeSession.status === 'initializing',
         variant: 'default' as const,
-        description: 'Download latest from remote'
+        description: t('sessionView.branchAction.description.downloadLatest')
       },
       {
         id: 'push',
-        label: 'Push',
+        label: t('sessionView.branchAction.push'),
         icon: Upload,
         shortcut: 'mod+shift+p',
         onClick: hook.handleGitPush,
         disabled: hook.isMerging || activeSession.status === 'running' || activeSession.status === 'initializing' || !activeSession.gitStatus?.ahead,
         variant: 'default' as const,
-        description: 'Upload your changes to remote'
+        description: t('sessionView.branchAction.description.uploadChanges')
       },
       // --- Main branch operations (last) ---
       {
         id: 'rebase-from-main',
-        label: `Rebase from ${hook.gitCommands?.mainBranch || 'main'}`,
+        label: interpolateTranslation(t('sessionView.branchAction.rebaseFrom'), {
+          branch: hook.gitCommands?.mainBranch || 'main',
+        }),
         icon: GitPullRequestArrow,
         shortcut: 'mod+shift+r',
         onClick: hook.handleRebaseMainIntoWorktree,
         disabled: hook.isMerging || activeSession.status === 'running' || activeSession.status === 'initializing' || !hook.hasChangesToRebase,
         variant: 'default' as const,
-        description: 'Sync latest changes from main branch'
+        description: t('sessionView.branchAction.description.syncMain')
       },
       {
         id: 'rebase-to-main',
-        label: `Merge to ${hook.gitCommands?.mainBranch || 'main'}`,
+        label: interpolateTranslation(t('sessionView.branchAction.mergeTo'), {
+          branch: hook.gitCommands?.mainBranch || 'main',
+        }),
         icon: GitMerge,
         shortcut: 'mod+shift+m',
         onClick: hook.handleSquashAndRebaseToMain,
         disabled: hook.isMerging || activeSession.status === 'running' || activeSession.status === 'initializing' ||
                   (!activeSession.gitStatus?.totalCommits || activeSession.gitStatus?.totalCommits === 0 || activeSession.gitStatus?.ahead === 0),
         variant: 'success' as const,
-        description: 'Apply changes to the main branch'
+        description: t('sessionView.branchAction.description.applyToMain')
       }
     ];
-  }, [activeSession, hook.isMerging, hook.gitCommands, hook.hasChangesToRebase, hook.hasStash, hook.handleGitPull, hook.handleGitPush, hook.handleGitFetch, hook.handleGitStash, hook.handleGitStashPop, hook.setShowCommitMessageDialog, hook.setDialogType, hook.handleRebaseMainIntoWorktree, hook.handleSquashAndRebaseToMain, activeSession?.gitStatus]);
+  }, [activeSession, hook.isMerging, hook.gitCommands, hook.hasChangesToRebase, hook.hasStash, hook.handleGitPull, hook.handleGitPush, hook.handleGitFetch, hook.handleGitStash, hook.handleGitStashPop, hook.setShowCommitMessageDialog, hook.setDialogType, hook.handleRebaseMainIntoWorktree, hook.handleSquashAndRebaseToMain, activeSession?.gitStatus, t]);
   
   // Removed unused variables - now handled by panels
 
@@ -805,7 +1065,7 @@ export const SessionView = memo(() => {
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-interactive mx-auto mb-4"></div>
-              <p className="text-text-secondary">Loading project...</p>
+              <p className="text-text-secondary">{t('sessionView.loadingProject')}</p>
             </div>
           </div>
         </div>
@@ -815,7 +1075,8 @@ export const SessionView = memo(() => {
     return (
       <ProjectView
         projectId={activeProjectId}
-        projectName={projectData.name || 'Project'}
+        projectName={projectData.name || t('sessionView.defaultProjectName')}
+        projectPath={projectData.path || ''}
         onGitPull={handleProjectGitPull}
         onGitPush={handleProjectGitPush}
         isMerging={isMergingProject}
@@ -830,7 +1091,7 @@ export const SessionView = memo(() => {
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-bg-primary">
       {/* SINGLE SessionProvider wraps everything */}
-      <SessionProvider session={activeSession} gitBranchActions={branchActions} isMerging={hook.isMerging} gitCommands={hook.gitCommands} onOpenIDEWithCommand={handleOpenIDEWithCommand} onConfigureIDE={() => setShowProjectSettings(true)} onSetTracking={handleOpenSetTracking} trackingBranch={currentUpstream} configuredIDECommand={sessionProject?.open_ide_command}>
+      <SessionProvider session={activeSession} projectName={sessionProject?.name} gitBranchActions={branchActions} isMerging={hook.isMerging} gitCommands={hook.gitCommands} onOpenIDEWithCommand={handleOpenIDEWithCommand} onConfigureIDE={() => setShowProjectSettings(true)} onSetTracking={handleOpenSetTracking} trackingBranch={currentUpstream} configuredIDECommand={sessionProject?.open_ide_command}>
 
         {/* Tab bar at top */}
         <PanelTabBar
@@ -839,49 +1100,46 @@ export const SessionView = memo(() => {
           onPanelSelect={handlePanelSelect}
           onPanelClose={handlePanelClose}
           onPanelCreate={handlePanelCreate}
+          layoutMode={workspaceLayoutViewState.mode}
+          onLayoutModeChange={handleLayoutModeChange}
           onToggleDetailPanel={() => setDetailVisible(v => !v)}
           detailPanelVisible={detailVisible}
         />
+
+        {sessionProject && (
+          <ProjectContextBanner
+            projectName={sessionProject.name}
+            projectPath={sessionProject.path}
+            workspaceName={activeSession.name}
+            workspacePath={activeSession.worktreePath}
+            branchName={activeSession.worktreePath?.replace(/\\/g, '/').split('/').pop() || ''}
+            mode="workspace"
+          />
+        )}
 
         {/* Content area: center panels + right detail */}
         <div className="flex-1 flex flex-row min-h-0">
           {/* Center column: vertical split with panels on top, terminal on bottom */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* Top: active panel content */}
-            <div className="flex-1 relative min-h-0 overflow-hidden">
-              {sessionPanels.length > 0 && currentActivePanel ? (
-                sessionPanels
-                  .filter(p => !defaultTerminalPanel || p.id !== defaultTerminalPanel.id)
-                  .map(panel => {
-                    const isActive = panel.id === currentActivePanel.id;
-                    const shouldKeepAlive = ['terminal'].includes(panel.type);
-                    if (!isActive && !shouldKeepAlive) return null;
-                    return (
-                      <div
-                        key={panel.id}
-                        className="absolute inset-0"
-                        style={{
-                          display: isActive ? 'block' : 'none',
-                          pointerEvents: isActive ? 'auto' : 'none'
-                        }}
-                      >
-                        <PanelContainer
-                          panel={panel}
-                          isActive={isActive}
-                          isMainRepo={!!activeSession.isMainRepo}
-                        />
-                      </div>
-                    );
-                  })
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-text-secondary">
-                  <div className="text-center p-8">
-                    <div className="text-4xl mb-4">⚡</div>
-                    <h2 className="text-xl font-semibold mb-2">No Active Panel</h2>
-                    <p className="text-sm">Add a tool panel to get started</p>
-                  </div>
-                </div>
-              )}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <WorkspaceLayoutSurface
+                layoutMode={workspaceLayoutViewState.mode}
+                slotPanels={workspaceLayoutPanels}
+                availablePanels={sortedSessionPanels}
+                splitRatio={workspaceLayoutViewState.splitRatio}
+                secondarySplitRatio={
+                  workspaceLayoutViewState.secondarySplitRatio ??
+                  DEFAULT_WORKSPACE_LAYOUT_SPLIT_RATIO
+                }
+                focusedSlot={workspaceLayoutViewState.focusSlot}
+                isMainRepo={!!activeSession.isMainRepo}
+                onSelectPanelForSlot={handleLayoutSlotPanelChange}
+                onSplitRatioChange={handleLayoutSplitRatioChange}
+                onSecondarySplitRatioChange={handleLayoutSecondarySplitRatioChange}
+                onFocusSlotChange={focusWorkspaceLayoutSlot}
+                onCreatePanel={handlePanelCreate}
+              />
             </div>
 
             {/* Bottom: persistent terminal (collapsible) */}
@@ -993,6 +1251,8 @@ export const SessionView = memo(() => {
             width={detailWidth}
             onResize={startDetailResize}
             mergeError={hook.mergeError}
+            workspaceLayoutState={workspaceLayoutViewState}
+            onRestoreWorkspaceLayoutState={setWorkspaceLayoutState}
           />
         </div>
 

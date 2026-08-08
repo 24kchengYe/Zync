@@ -60,6 +60,7 @@ export interface AppConfig {
     posthogApiKey?: string;
     posthogHost?: string;
   };
+  language?: 'en' | 'zh';
   // User-defined custom commands for the Add Tool picker
   customCommands?: CustomCommand[];
   // Terminal shortcuts — hotkey-triggered clipboard paste snippets

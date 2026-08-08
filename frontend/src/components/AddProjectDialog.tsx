@@ -8,6 +8,7 @@ import { Card } from './ui/Card';
 import { API } from '../utils/api';
 import { useNavigationStore } from '../stores/navigationStore';
 import type { CreateProjectRequest } from '../types/project';
+import { useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
 
 interface AddProjectDialogProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface AddProjectDialogProps {
 }
 
 export function AddProjectDialog({ isOpen, onClose }: AddProjectDialogProps) {
+  const { t } = useI18n();
   const [newProject, setNewProject] = useState<CreateProjectRequest>({ name: '', path: '', buildScript: '', runScript: '' });
   const [detectedBranch, setDetectedBranch] = useState<string | null>(null);
   const [showValidationErrors, setShowValidationErrors] = useState(false);
@@ -78,12 +80,12 @@ export function AddProjectDialog({ isOpen, onClose }: AddProjectDialogProps) {
       onClose={resetAndClose}
       size="lg"
     >
-      <ModalHeader title="Add New Repository" icon={<FolderPlus className="w-5 h-5" />} />
+      <ModalHeader title={t('sidebar.newRepository')} icon={<FolderPlus className="w-5 h-5" />} />
       <ModalBody>
         <div className="space-y-6">
           <FieldWithTooltip
-            label="Project Name"
-            tooltip="A display name for this project in the sidebar"
+            label={t('projectSelector.projectName.label')}
+            tooltip={t('projectSelector.projectName.tooltip')}
           >
             <EnhancedInput
               type="text"
@@ -92,7 +94,7 @@ export function AddProjectDialog({ isOpen, onClose }: AddProjectDialogProps) {
                 setNewProject({ ...newProject, name: e.target.value });
                 if (showValidationErrors) setShowValidationErrors(false);
               }}
-              placeholder="Enter project name"
+              placeholder={t('projectSelector.projectName.placeholder')}
               size="lg"
               fullWidth
               required
@@ -101,8 +103,8 @@ export function AddProjectDialog({ isOpen, onClose }: AddProjectDialogProps) {
           </FieldWithTooltip>
 
           <FieldWithTooltip
-            label="Repository Path"
-            tooltip="The absolute path to a git repository on your machine"
+            label={t('projectSelector.repositoryPath.label')}
+            tooltip={t('projectSelector.repositoryPath.tooltip')}
           >
             <div className="space-y-2">
               <EnhancedInput
@@ -113,7 +115,7 @@ export function AddProjectDialog({ isOpen, onClose }: AddProjectDialogProps) {
                   detectCurrentBranch(e.target.value);
                   if (showValidationErrors) setShowValidationErrors(false);
                 }}
-                placeholder="/path/to/your/repository"
+                placeholder={t('projectSelector.repositoryPath.placeholder')}
                 size="lg"
                 fullWidth
                 required
@@ -131,7 +133,7 @@ export function AddProjectDialog({ isOpen, onClose }: AddProjectDialogProps) {
                   variant="secondary"
                   size="sm"
                 >
-                  Browse
+                  {t('common.browse')}
                 </Button>
               </div>
             </div>
@@ -139,14 +141,14 @@ export function AddProjectDialog({ isOpen, onClose }: AddProjectDialogProps) {
 
           {newProject.path && (
             <FieldWithTooltip
-              label="Detected Branch"
-              tooltip="The main branch Pane will use as the base for worktrees"
+              label={t('projectSelector.mainBranch.label')}
+              tooltip={t('projectSelector.mainBranch.tooltip')}
             >
               <Card variant="bordered" padding="md">
                 <div className="flex items-center gap-2 text-sm text-text-secondary">
                   <GitBranch className="w-4 h-4" />
                   <span className="font-mono">
-                    {detectedBranch || 'Detecting...'}
+                    {detectedBranch || t('projectSelector.mainBranch.detecting')}
                   </span>
                 </div>
               </Card>
@@ -161,7 +163,7 @@ export function AddProjectDialog({ isOpen, onClose }: AddProjectDialogProps) {
           variant="ghost"
           size="md"
         >
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button
           onClick={handleCreateProject}
@@ -169,7 +171,7 @@ export function AddProjectDialog({ isOpen, onClose }: AddProjectDialogProps) {
           variant="primary"
           size="md"
         >
-          Create
+          {t('projectSelector.createProject')}
         </Button>
       </ModalFooter>
     </Modal>

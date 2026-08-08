@@ -465,6 +465,7 @@ export class SessionManager extends EventEmitter {
         const session = this.convertDbSessionToSession(existingSession);
         await panelManager.ensureExplorerPanel(session.id);
         await panelManager.ensureDiffPanel(session.id);
+        await panelManager.ensureDashboardPanel(session.id);
         return session;
       }
       
@@ -506,6 +507,7 @@ export class SessionManager extends EventEmitter {
       
       await panelManager.ensureExplorerPanel(session.id);
       await panelManager.ensureDiffPanel(session.id);
+      await panelManager.ensureDashboardPanel(session.id);
       return session;
     });
   }

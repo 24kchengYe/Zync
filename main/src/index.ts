@@ -58,10 +58,12 @@ import { getCloudVmManager } from './ipc/cloud';
 import { CliManagerFactory } from './services/cliManagerFactory';
 import { AbstractCliManager } from './services/panels/cli/AbstractCliManager';
 import { setupConsoleWrapper } from './utils/consoleWrapper';
+import { attachBrokenPipeGuard } from './utils/streamErrorGuards';
 import * as fs from 'fs';
 import { terminalPanelManager } from './services/terminalPanelManager';
 import { panelManager } from './services/panelManager';
 import { TerminalPanelState } from '../../shared/types/panels';
+import { setApplicationMenuForLanguage } from './menu/appMenu';
 
 export let mainWindow: BrowserWindow | null = null;
 
@@ -122,6 +124,23 @@ const originalWarn: typeof console.warn = console.warn;
 const originalInfo: typeof console.info = console.info;
 
 const isDevelopment = process.env.NODE_ENV !== 'production' && !app.isPackaged;
+
+const reportUnexpectedStreamError = (streamName: 'stdout' | 'stderr', error: Error) => {
+  try {
+    const debugLogPath = path.join(process.cwd(), 'backend-debug.log');
+    const message = `[${new Date().toISOString()}] [STDIO] ${streamName} stream error: ${error.message}\n${error.stack ?? ''}\n`;
+    fs.appendFileSync(debugLogPath, message);
+  } catch {
+    // Ignore secondary reporting failures to avoid crashing on broken stdio.
+  }
+};
+
+attachBrokenPipeGuard(process.stdout, (error) => {
+  reportUnexpectedStreamError('stdout', error);
+});
+attachBrokenPipeGuard(process.stderr, (error) => {
+  reportUnexpectedStreamError('stderr', error);
+});
 
 // Reset debug log files at startup in development mode
 if (isDevelopment) {
@@ -601,6 +620,10 @@ async function createWindow() {
 async function initializeServices() {
   configManager = new ConfigManager();
   await configManager.initialize();
+  setApplicationMenuForLanguage(configManager.getConfig().language ?? 'en', isDevelopment);
+  configManager.on('config-updated', (config) => {
+    setApplicationMenuForLanguage(config.language ?? 'en', isDevelopment);
+  });
 
   // Initialize logger early so it can capture all logs
   logger = new Logger(configManager);

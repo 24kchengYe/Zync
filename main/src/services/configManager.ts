@@ -28,6 +28,7 @@ export class ConfigManager extends EventEmitter {
       defaultModel: 'sonnet',
       stravuApiKey: undefined,
       stravuServerUrl: '', // Stravu integration disabled
+      language: 'en',
       notifications: {
         enabled: true,
         playSound: true,

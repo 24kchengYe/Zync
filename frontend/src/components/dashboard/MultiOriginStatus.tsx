@@ -1,6 +1,7 @@
 import React from 'react';
-import { GitBranch, AlertCircle, CheckCircle, Clock, ArrowRight, GitFork } from 'lucide-react';
-import type { RemoteStatus, MainBranchStatus } from '../../types/projectDashboard';
+import { AlertCircle, ArrowRight, CheckCircle, Clock, GitBranch, GitFork } from 'lucide-react';
+import type { MainBranchStatus, RemoteStatus } from '../../types/projectDashboard';
+import { interpolateTranslation, useI18n } from '../../../../UpdateWuruize/frontend/I18nContext';
 
 interface MultiOriginStatusProps {
   mainBranch: string;
@@ -13,19 +14,18 @@ export const MultiOriginStatus: React.FC<MultiOriginStatusProps> = ({
   mainBranch,
   mainBranchStatus,
   remotes = [],
-  onReviewUpdates
+  onReviewUpdates,
 }) => {
-  // Handle progressive loading - mainBranchStatus might not be available yet
+  const { t } = useI18n();
+
   if (!mainBranchStatus) {
     return null;
   }
 
-  // Find upstream and origin remotes
-  const upstream = remotes.find(r => r.isUpstream || r.name === 'upstream');
-  const origin = remotes.find(r => !r.isUpstream && r.name === 'origin');
+  const upstream = remotes.find(remote => remote.isUpstream || remote.name === 'upstream');
+  const origin = remotes.find(remote => !remote.isUpstream && remote.name === 'origin');
   const hasMultipleRemotes = remotes.length > 1;
-  
-  // Check if any updates are needed
+
   const upstreamNeedsUpdate = upstream && upstream.status !== 'up-to-date';
   const originNeedsUpdate = origin && origin.status !== 'up-to-date';
   const localNeedsUpdate = mainBranchStatus.status !== 'up-to-date';
@@ -34,215 +34,193 @@ export const MultiOriginStatus: React.FC<MultiOriginStatusProps> = ({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'up-to-date':
-        return <CheckCircle className="w-4 h-4 text-status-success" />;
+        return <CheckCircle className="h-4 w-4 text-status-success" />;
       case 'behind':
-        return <AlertCircle className="w-4 h-4 text-status-warning" />;
+        return <AlertCircle className="h-4 w-4 text-status-warning" />;
       case 'ahead':
-        return <Clock className="w-4 h-4 text-interactive" />;
+        return <Clock className="h-4 w-4 text-interactive" />;
       case 'diverged':
-        return <AlertCircle className="w-4 h-4 text-status-error" />;
+        return <AlertCircle className="h-4 w-4 text-status-error" />;
       default:
         return null;
     }
   };
 
-  const getStatusText = (remote: RemoteStatus) => {
+  const getRemoteStatusText = (remote: RemoteStatus) => {
     switch (remote.status) {
-      case 'up-to-date':
-        return 'Up to date';
       case 'behind':
-        return `${remote.behindCount} behind`;
+        return interpolateTranslation(t('dashboard.sync.status.behindCount'), { count: remote.behindCount });
       case 'ahead':
-        return `${remote.aheadCount} ahead`;
+        return interpolateTranslation(t('dashboard.sync.status.aheadCount'), { count: remote.aheadCount });
       case 'diverged':
-        return `${remote.aheadCount}↑ ${remote.behindCount}↓`;
+        return interpolateTranslation(t('dashboard.sync.status.divergedCount'), {
+          ahead: remote.aheadCount,
+          behind: remote.behindCount,
+        });
+      case 'up-to-date':
       default:
-        return 'Unknown';
+        return t('dashboard.sync.status.upToDate');
     }
   };
 
   const getLocalStatusText = () => {
     const { status, aheadCount = 0, behindCount = 0 } = mainBranchStatus;
+
     switch (status) {
-      case 'up-to-date':
-        return 'Synced with origin';
       case 'behind':
-        return `${behindCount} behind origin`;
+        return interpolateTranslation(t('dashboard.sync.status.behindOriginCount'), { count: behindCount });
       case 'ahead':
-        return `${aheadCount} ahead of origin`;
+        return interpolateTranslation(t('dashboard.sync.status.aheadOriginCount'), { count: aheadCount });
       case 'diverged':
-        return `${aheadCount}↑ ${behindCount}↓`;
+        return interpolateTranslation(t('dashboard.sync.status.divergedOriginCount'), {
+          ahead: aheadCount,
+          behind: behindCount,
+        });
+      case 'up-to-date':
       default:
-        return 'Unknown status';
+        return t('dashboard.sync.status.syncedWithOrigin');
     }
   };
 
   if (!hasMultipleRemotes) {
-    // Single remote view (original view)
     return (
-      <div className="mb-6 p-4 bg-surface-secondary rounded-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <GitBranch className="w-5 h-5 text-text-tertiary" />
-            <div>
-              <h3 className="font-medium text-text-primary">
-                Main Branch ({mainBranch})
-              </h3>
-              <p className="text-sm text-text-tertiary flex items-center gap-2 mt-1">
-                {getStatusIcon(mainBranchStatus.status)}
-                {getLocalStatusText()}
-              </p>
-            </div>
+      <div className="rounded-lg border border-border-primary bg-surface-secondary px-3 py-2.5">
+        <div className="flex items-center gap-2.5">
+          <GitBranch className="h-4 w-4 text-text-tertiary" />
+          <div>
+            <h3 className="text-sm font-medium text-text-primary">
+              {t('dashboard.sync.title')} ({mainBranch})
+            </h3>
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-text-tertiary">
+              {getStatusIcon(mainBranchStatus.status)}
+              <span>{getLocalStatusText()}</span>
+            </p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Multi-remote cascade view
   return (
-    <div className="mb-6 space-y-3">
-      {/* Multi-Origin Status Flow */}
-      <div className="bg-surface-primary border border-border-primary rounded-lg overflow-hidden">
-        <div className="bg-surface-secondary px-4 py-2 border-b border-border-primary">
-          <h3 className="text-sm font-medium text-text-secondary">Git Remote Status</h3>
+    <div className="space-y-2">
+      <div className="overflow-hidden rounded-lg border border-border-primary bg-surface-primary">
+        <div className="border-b border-border-primary bg-surface-secondary px-3 py-1.5">
+          <h3 className="text-xs font-medium text-text-secondary">{t('dashboard.sync.remoteTitle')}</h3>
         </div>
-        
-        <div className="p-4">
-          <div className="flex items-center gap-3">
-            
-            {/* Upstream Status */}
+
+        <div className="p-2.5">
+          <div className="flex items-center gap-2.5">
             {upstream && (
               <>
-                <div className="flex-1 bg-interactive/10 rounded-lg p-3 border border-interactive/30">
-                  <div className="flex items-center justify-between">
+                <div className="flex-1 rounded-lg border border-interactive/30 bg-interactive/10 p-2">
+                  <div className="flex items-center justify-between gap-2">
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <GitBranch className="w-4 h-4 text-interactive" />
-                        <span className="text-sm font-semibold text-text-primary">
+                      <div className="mb-0.5 flex items-center gap-1.5">
+                        <GitBranch className="h-3.5 w-3.5 text-interactive" />
+                        <span className="text-xs font-semibold text-text-primary">
                           {upstream.name}/{upstream.branch}
                         </span>
                       </div>
-                      <div className="text-xs text-text-tertiary">Source repository</div>
+                      <div className="text-[11px] text-text-tertiary">{t('dashboard.sync.sourceRepository')}</div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {upstream.status !== 'up-to-date' && (
-                        <span className="text-xs font-medium text-interactive">
-                          {getStatusText(upstream)}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-medium text-interactive">{getRemoteStatusText(upstream)}</span>
                       {getStatusIcon(upstream.status)}
                     </div>
                   </div>
                 </div>
-                
-                <ArrowRight className="w-5 h-5 text-text-tertiary flex-shrink-0" />
+                <ArrowRight className="h-4 w-4 flex-shrink-0 text-text-tertiary" />
               </>
             )}
-          
-            {/* Origin/Fork Status */}
+
             {origin && (
               <>
-                <div className="flex-1 bg-interactive/10 rounded-lg p-3 border border-interactive/30">
-                  <div className="flex items-center justify-between">
+                <div className="flex-1 rounded-lg border border-interactive/30 bg-interactive/10 p-2">
+                  <div className="flex items-center justify-between gap-2">
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <GitBranch className="w-4 h-4 text-interactive" />
-                        <span className="text-sm font-semibold text-text-primary">
+                      <div className="mb-0.5 flex items-center gap-1.5">
+                        <GitBranch className="h-3.5 w-3.5 text-interactive" />
+                        <span className="text-xs font-semibold text-text-primary">
                           {origin.name}/{origin.branch}
                         </span>
                         {origin.isFork && (
-                          <span className="inline-flex items-center gap-1 text-xs bg-interactive/20 text-interactive px-1.5 py-0.5 rounded">
-                            <GitFork className="w-3 h-3" />
-                            <span>fork</span>
+                          <span className="inline-flex items-center gap-1 rounded bg-interactive/20 px-1.5 py-0.5 text-[11px] text-interactive">
+                            <GitFork className="h-2.5 w-2.5" />
+                            <span>{t('dashboard.sync.fork')}</span>
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-text-tertiary">Your remote</div>
+                      <div className="text-[11px] text-text-tertiary">{t('dashboard.sync.yourRemote')}</div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {origin.status !== 'up-to-date' && (
-                        <span className="text-xs font-medium text-interactive">
-                          {getStatusText(origin)}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-medium text-interactive">{getRemoteStatusText(origin)}</span>
                       {getStatusIcon(origin.status)}
                     </div>
                   </div>
                 </div>
-                
-                <ArrowRight className="w-5 h-5 text-text-tertiary flex-shrink-0" />
+                <ArrowRight className="h-4 w-4 flex-shrink-0 text-text-tertiary" />
               </>
             )}
-          
-            {/* Local Main Status */}
-            <div className="flex-1 bg-surface-secondary rounded-lg p-3 border border-border-primary">
-              <div className="flex items-center justify-between">
+
+            <div className="flex-1 rounded-lg border border-border-primary bg-surface-secondary p-2">
+              <div className="flex items-center justify-between gap-2">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <GitBranch className="w-4 h-4 text-text-tertiary" />
-                    <span className="text-sm font-semibold text-text-primary">
-                      {mainBranch}
-                    </span>
-                    <span className="text-xs bg-surface-tertiary text-text-secondary px-1.5 py-0.5 rounded">
-                      local
+                  <div className="mb-0.5 flex items-center gap-1.5">
+                    <GitBranch className="h-3.5 w-3.5 text-text-tertiary" />
+                    <span className="text-xs font-semibold text-text-primary">{mainBranch}</span>
+                    <span className="rounded bg-surface-tertiary px-1.5 py-0.5 text-[11px] text-text-secondary">
+                      {t('dashboard.sync.local')}
                     </span>
                   </div>
-                  <div className="text-xs text-text-tertiary">Base for sessions</div>
+                  <div className="text-[11px] text-text-tertiary">{t('dashboard.sync.baseForWorkspaces')}</div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {mainBranchStatus.status !== 'up-to-date' && (
-                    <span className="text-xs font-medium text-text-secondary">
-                      {getLocalStatusText()}
-                    </span>
-                  )}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium text-text-secondary">{getLocalStatusText()}</span>
                   {getStatusIcon(mainBranchStatus.status)}
                 </div>
               </div>
             </div>
           </div>
         </div>
-        
-        {/* Action Bar - Shows when updates are needed */}
+
         {hasUpdatesNeeded && (
-          <div className="bg-status-warning/10 border-t border-status-warning/30 px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-status-warning" />
-                <span className="text-sm font-medium text-status-warning">
-                  Updates available in the cascade
+          <div className="border-t border-status-warning/30 bg-status-warning/10 px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <AlertCircle className="h-4 w-4 text-status-warning" />
+                <span className="text-xs font-medium text-status-warning">
+                  {t('dashboard.sync.updatesAvailable')}
                 </span>
               </div>
               {onReviewUpdates && (
-                <button 
+                <button
                   onClick={onReviewUpdates}
-                  className="text-sm bg-status-warning hover:bg-status-warning-hover text-white px-3 py-1.5 rounded font-medium transition-colors"
+                  className="rounded bg-status-warning px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-status-warning-hover"
                 >
-                  Review Updates →
+                  {t('dashboard.sync.reviewUpdates')}
                 </button>
               )}
             </div>
           </div>
         )}
-        
-        {/* Flow Legend */}
-        <div className="bg-surface-secondary px-4 py-2 border-t border-border-primary">
-          <div className="flex items-center gap-6 text-xs text-text-tertiary">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-3 h-3 text-status-success" />
-              <span>Synced</span>
+
+        <div className="border-t border-border-primary bg-surface-secondary px-3 py-1.5">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-text-tertiary">
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="h-3 w-3 text-status-success" />
+              <span>{t('dashboard.sync.legend.synced')}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-3 h-3 text-status-warning" />
-              <span>Behind</span>
+            <div className="flex items-center gap-1.5">
+              <AlertCircle className="h-3 w-3 text-status-warning" />
+              <span>{t('dashboard.sync.legend.behind')}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-3 h-3 text-interactive" />
-              <span>Ahead</span>
+            <div className="flex items-center gap-1.5">
+              <Clock className="h-3 w-3 text-interactive" />
+              <span>{t('dashboard.sync.legend.ahead')}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-3 h-3 text-status-error" />
-              <span>Diverged</span>
+            <div className="flex items-center gap-1.5">
+              <AlertCircle className="h-3 w-3 text-status-error" />
+              <span>{t('dashboard.sync.legend.diverged')}</span>
             </div>
           </div>
         </div>

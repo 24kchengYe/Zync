@@ -21,6 +21,7 @@ import {
   ChevronUp,
   ChevronDown,
   Terminal,
+  Globe,
   Cloud,
   Trash2,
   Copy,
@@ -39,6 +40,26 @@ import { Modal, ModalHeader, ModalBody, ModalFooter } from './ui/Modal';
 import { CollapsibleCard } from './ui/CollapsibleCard';
 import { SettingsSection } from './ui/SettingsSection';
 import { Dropdown } from './ui/Dropdown';
+import {
+  LANGUAGE_OPTIONS,
+  getShellPreferenceLabel,
+  getThemeLabel,
+  interpolateTranslation,
+  type Language,
+  useI18n,
+} from '../../../UpdateWuruize/frontend/I18nContext';
+
+function getFallbackPlatform(): string {
+  if (typeof navigator === 'undefined') {
+    return 'darwin';
+  }
+
+  const userAgent = navigator.userAgent.toLowerCase();
+  if (userAgent.includes('windows')) return 'win32';
+  if (userAgent.includes('mac')) return 'darwin';
+  if (userAgent.includes('linux')) return 'linux';
+  return 'darwin';
+}
 
 interface IPCResponse<T = unknown> {
   success: boolean;
@@ -67,6 +88,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
   const [disableAutoContext, setDisableAutoContext] = useState(false);
   const [autoRenameToPR, setAutoRenameToPR] = useState<boolean>(true);
   const [uiScale, setUiScale] = useState(1.0);
+  const [language, setLanguage] = useState<Language>('en');
   const [notificationSettings, setNotificationSettings] = useState({
     enabled: true,
     playSound: true,
@@ -95,7 +117,11 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
   const activeSessionId = useSessionStore((state) => state.activeSessionId);
   const { updateSettings } = useNotifications();
   const { theme, setTheme } = useTheme();
-  const { fetchConfig: refreshConfigStore } = useConfigStore();
+  const { fetchConfig: refreshConfigStore, updateConfig: updateGlobalConfig } = useConfigStore();
+  const { t } = useI18n();
+  const additionalPathsHelperText = platform === 'win32'
+    ? t('settings.advanced.path.helperWindows')
+    : t('settings.advanced.path.helperUnix');
 
   const handleRunCloudSetup = useCallback(async () => {
     if (!activeSessionId) return;
@@ -104,7 +130,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
       const panel = await panelApi.createPanel({
         sessionId: activeSessionId,
         type: 'terminal',
-        title: 'Cloud Setup',
+        title: t('settings.cloud.panelTitle'),
         initialState: {
           customState: {
             initialCommand: 'bash cloud/scripts/setup-cloud.sh'
@@ -118,15 +144,28 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
     } finally {
       setCloudSetupLoading(false);
     }
-  }, [activeSessionId, onClose]);
+  }, [activeSessionId, onClose, t]);
 
   useEffect(() => {
     if (isOpen) {
       // Get platform first, then fetch config (needed for Windows shell detection)
-      window.electronAPI.getPlatform().then((p) => {
-        setPlatform(p);
-        fetchConfig(p);
-      });
+      const electronAPI = window.electronAPI;
+      if (electronAPI?.getPlatform) {
+        electronAPI.getPlatform()
+          .then((p) => {
+            setPlatform(p);
+            fetchConfig(p);
+          })
+          .catch((platformError) => {
+            console.error('Failed to get platform in Settings:', platformError);
+            const fallbackPlatform = getFallbackPlatform();
+            setPlatform(fallbackPlatform);
+            fetchConfig(fallbackPlatform);
+          });
+      } else {
+        const fallbackPlatform = getFallbackPlatform();
+        setPlatform(fallbackPlatform);
+      }
 
       const loadAutoRename = async () => {
         try {
@@ -163,6 +202,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
       setEnableCommitFooter(data.enableCommitFooter !== false); // Default to true
       setDisableAutoContext(data.disableAutoContext || false);
       setUiScale(data.uiScale || 1.0);
+      setLanguage(data.language || 'en');
 
       // Load additional paths
       const paths = data.additionalPaths || [];
@@ -207,7 +247,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
         setCloudTunnelPort(String(data.cloud.tunnelPort || 8080));
       }
     } catch (err) {
-      setError('Failed to load configuration');
+      setError(t('settings.errors.loadConfig'));
     }
   };
 
@@ -218,6 +258,13 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
     } catch (error) {
       console.error('Failed to save auto-rename preference:', error);
     }
+  };
+
+  const handleLanguageChange = async (nextLanguage: Language) => {
+    setLanguage(nextLanguage);
+    await updateGlobalConfig({ language: nextLanguage }).catch((languageError) => {
+      console.error('Failed to update language:', languageError);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -242,6 +289,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
         devMode,
         enableCommitFooter,
         disableAutoContext,
+        language,
         uiScale,
         additionalPaths: parsedPaths,
         notifications: notificationSettings,
@@ -263,7 +311,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
       });
 
       if (!response.success) {
-        throw new Error(response.error || 'Failed to update configuration');
+        throw new Error(response.error || t('settings.errors.updateConfig'));
       }
 
       // Only toggle PostHog opt-in/opt-out after config save succeeds
@@ -287,7 +335,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
 
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update configuration');
+      setError(err instanceof Error ? err.message : t('settings.errors.updateConfig'));
     } finally {
       setIsSubmitting(false);
     }
@@ -296,7 +344,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl" showCloseButton={false}>
       <ModalHeader
-        title="Zync Settings"
+        title={t('settings.title')}
         icon={<SettingsIcon className="w-5 h-5" />}
         onClose={onClose}
       />
@@ -312,7 +360,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                 : 'text-text-tertiary hover:text-text-primary hover:bg-surface-hover'
             }`}
           >
-            General
+            {t('settings.tabs.general')}
           </button>
           <button
             onClick={() => setActiveTab('notifications')}
@@ -322,7 +370,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                 : 'text-text-tertiary hover:text-text-primary hover:bg-surface-hover'
             }`}
           >
-            Notifications
+            {t('settings.tabs.notifications')}
           </button>
           <button
             onClick={() => setActiveTab('shortcuts')}
@@ -332,7 +380,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                 : 'text-text-tertiary hover:text-text-primary hover:bg-surface-hover'
             }`}
           >
-            Shortcuts
+            {t('settings.tabs.shortcuts')}
           </button>
           <button
             onClick={() => setActiveTab('analytics')}
@@ -342,7 +390,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                 : 'text-text-tertiary hover:text-text-primary hover:bg-surface-hover'
             }`}
           >
-            Analytics
+            {t('settings.tabs.analytics')}
           </button>
         </div>
 
@@ -350,14 +398,14 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
           <form id="settings-form" onSubmit={handleSubmit} className="space-y-6">
             {/* Appearance */}
             <CollapsibleCard
-              title="Appearance & Theme"
-              subtitle="Customize how Pane looks and feels"
+              title={t('settings.appearance.title')}
+              subtitle={t('settings.appearance.subtitle')}
               icon={<Palette className="w-5 h-5" />}
               defaultExpanded={true}
             >
               <SettingsSection
-                title="Theme"
-                description="Choose your preferred theme"
+                title={t('common.theme.label')}
+                description={t('settings.appearance.theme.description')}
                 icon={<Palette className="w-4 h-4" />}
               >
                 <Dropdown
@@ -366,14 +414,14 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                       type="button"
                       className="w-full px-4 py-3 bg-surface-secondary hover:bg-surface-hover rounded-lg transition-colors border border-border-secondary text-text-primary focus:outline-none focus:ring-2 focus:ring-interactive cursor-pointer flex items-center justify-between"
                     >
-                      <span>{theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'OLED Black'}</span>
+                      <span>{getThemeLabel(theme, t)}</span>
                       <ChevronDown className="w-4 h-4 text-text-tertiary" />
                     </button>
                   }
                   items={[
-                    { id: 'light', label: 'Light', onClick: () => setTheme('light') },
-                    { id: 'dark', label: 'Dark', onClick: () => setTheme('dark') },
-                    { id: 'oled', label: 'OLED Black', onClick: () => setTheme('oled') },
+                    { id: 'light', label: t('common.theme.light'), onClick: () => setTheme('light') },
+                    { id: 'dark', label: t('common.theme.dark'), onClick: () => setTheme('dark') },
+                    { id: 'oled', label: t('common.theme.oled'), onClick: () => setTheme('oled') },
                   ]}
                   selectedId={theme}
                   position="auto"
@@ -382,8 +430,8 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
               </SettingsSection>
 
               <SettingsSection
-                title="UI Scale"
-                description="Adjust the size of all UI elements for better readability"
+                title={t('common.uiScale.label')}
+                description={t('settings.appearance.uiScale.description')}
                 icon={<Eye className="w-4 h-4" />}
               >
                 <div className="space-y-3">
@@ -441,34 +489,60 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                   </div>
                 </div>
               </SettingsSection>
+
+              <SettingsSection
+                title={t('common.language.label')}
+                description={t('settings.appearance.language.description')}
+                icon={<Globe className="w-4 h-4" />}
+              >
+                <Dropdown
+                  trigger={
+                    <button
+                      type="button"
+                      className="w-full px-4 py-3 bg-surface-secondary hover:bg-surface-hover rounded-lg transition-colors border border-border-secondary text-text-primary focus:outline-none focus:ring-2 focus:ring-interactive cursor-pointer flex items-center justify-between"
+                    >
+                      <span>{language === 'zh' ? t('common.language.chinese') : t('common.language.english')}</span>
+                      <ChevronDown className="w-4 h-4 text-text-tertiary" />
+                    </button>
+                  }
+                  items={LANGUAGE_OPTIONS.map((option) => ({
+                    id: option.id,
+                    label: t(option.labelKey),
+                    onClick: () => handleLanguageChange(option.id),
+                  }))}
+                  selectedId={language}
+                  position="auto"
+                  width="lg"
+                />
+              </SettingsSection>
             </CollapsibleCard>
 
             {/* AI Integration */}
             <CollapsibleCard
-              title="AI Integration"
-              subtitle="Configure Claude integration and smart features"
+              title={t('settings.ai.title')}
+              subtitle={t('settings.ai.subtitle')}
               icon={<Zap className="w-5 h-5" />}
               defaultExpanded={true}
             >
               <SettingsSection
-                title="Smart Pane Names"
-                description="Let Claude automatically generate meaningful names for your panes"
+                title={t('settings.ai.smartNaming.title')}
+                description={t('settings.ai.smartNaming.description')}
                 icon={<FileText className="w-4 h-4" />}
               >
                 <Input
-                  label="Anthropic API Key"
+                  label={t('settings.ai.smartNaming.apiKeyLabel')}
                   type="password"
                   value={anthropicApiKey}
                   onChange={(e) => setAnthropicApiKey(e.target.value)}
-                  placeholder="sk-ant-..."
+                  placeholder={t('settings.ai.smartNaming.apiKeyPlaceholder')}
                   fullWidth
-                  helperText="Optional: Used only for generating pane names. Your main Claude Code API key is separate."
+                  helperText={t('settings.ai.smartNaming.apiKeyHelper')}
                 />
               </SettingsSection>
 
               <SettingsSection
-                title="Default Security Mode"
-                description="How Claude should handle potentially risky operations"
+                title={t('settings.ai.security.title')}
+                description={t('settings.ai.security.description')}
                 icon={defaultPermissionMode === 'approve' ? <Shield className="w-4 h-4" /> : <ShieldOff className="w-4 h-4" />}
               >
                 <div className="space-y-3">
@@ -484,11 +558,11 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <ShieldOff className="w-4 h-4 text-text-tertiary" />
-                        <span className="text-sm font-medium text-text-primary">Fast & Flexible</span>
-                        <span className="ml-auto px-2 py-0.5 text-xs bg-status-warning/20 text-status-warning rounded-full">Default</span>
+                        <span className="text-sm font-medium text-text-primary">{t('settings.ai.security.fast.title')}</span>
+                        <span className="ml-auto px-2 py-0.5 text-xs bg-status-warning/20 text-status-warning rounded-full">{t('settings.ai.security.fast.badge')}</span>
                       </div>
                       <p className="text-xs text-text-tertiary leading-relaxed">
-                        Claude executes commands quickly without asking permission. Great for development workflows.
+                        {t('settings.ai.security.fast.description')}
                       </p>
                     </div>
                   </label>
@@ -504,10 +578,10 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <Shield className="w-4 h-4 text-status-success" />
-                        <span className="text-sm font-medium text-text-primary">Secure & Controlled</span>
+                        <span className="text-sm font-medium text-text-primary">{t('settings.ai.security.secure.title')}</span>
                       </div>
                       <p className="text-xs text-text-tertiary leading-relaxed">
-                        Claude asks for your approval before running potentially risky commands. Safer for production code.
+                        {t('settings.ai.security.secure.description')}
                       </p>
                     </div>
                   </label>
@@ -515,98 +589,96 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
               </SettingsSection>
 
               <SettingsSection
-                title="Global Instructions"
-                description="Add custom instructions that apply to all your projects"
+                title={t('settings.ai.instructions.title')}
+                description={t('settings.ai.instructions.description')}
                 icon={<FileText className="w-4 h-4" />}
               >
                 <Textarea
-                  label="Global System Prompt"
+                  label={t('settings.ai.instructions.label')}
                   value={globalSystemPrompt}
                   onChange={(e) => setGlobalSystemPrompt(e.target.value)}
-                  placeholder="Always use TypeScript... Follow our team's coding standards..."
+                  placeholder={t('settings.ai.instructions.placeholder')}
                   rows={3}
                   fullWidth
-                  helperText="These instructions will be added to every Claude session across all projects."
+                  helperText={t('settings.ai.instructions.helper')}
                 />
               </SettingsSection>
 
               <SettingsSection
-                title="Pane Attribution"
-                description="Add Pane branding to commit messages"
+                title={t('settings.ai.commitAttribution.title')}
+                description={t('settings.ai.commitAttribution.description')}
                 icon={<FileText className="w-4 h-4" />}
               >
                 <Checkbox
-                  label="Include Pane footer in commits"
+                  label={t('settings.ai.commitAttribution.checkbox')}
                   checked={enableCommitFooter}
                   onChange={(e) => setEnableCommitFooter(e.target.checked)}
                 />
                 <p className="text-xs text-text-tertiary mt-1">
-                  When enabled, commits made through Pane will include a footer crediting Pane. This helps others know you're using Pane for AI-powered development.
+                  {t('settings.ai.commitAttribution.helper')}
                 </p>
               </SettingsSection>
 
               <SettingsSection
-                title="Auto-rename Sessions to PR Title"
-                description="Automatically rename sessions when a pull request is detected"
+                title={t('settings.ai.autoRename.title')}
+                description={t('settings.ai.autoRename.description')}
                 icon={<FileText className="w-4 h-4" />}
               >
                 <Checkbox
-                  label="Auto-rename sessions to PR title"
+                  label={t('settings.ai.autoRename.checkbox')}
                   checked={autoRenameToPR}
                   onChange={(e) => handleAutoRenameToggle(e.target.checked)}
                 />
                 <p className="text-xs text-text-tertiary mt-1">
-                  When a PR is detected for a session, automatically rename it to the PR title.
+                  {t('settings.ai.autoRename.helper')}
                 </p>
               </SettingsSection>
 
               <SettingsSection
-                title="Automatic Context Tracking"
-                description="Control whether Claude automatically runs /context after responses"
+                title={t('settings.ai.autoContext.title')}
+                description={t('settings.ai.autoContext.description')}
                 icon={<Activity className="w-4 h-4" />}
               >
                 <Checkbox
-                  label="Disable automatic context tracking"
+                  label={t('settings.ai.autoContext.checkbox')}
                   checked={disableAutoContext}
                   onChange={(e) => setDisableAutoContext(e.target.checked)}
                 />
                 <p className="text-xs text-text-tertiary mt-1">
-                  When checked, Pane will not automatically run /context after each
-                  Claude response. This reduces wait time and Claude quota usage.
-                  You can still manually run /context when needed.
+                  {t('settings.ai.autoContext.helper')}
                 </p>
               </SettingsSection>
             </CollapsibleCard>
 
             {/* Cloud VM */}
             <CollapsibleCard
-              title="Cloud VM"
-              subtitle="Run Pane on a persistent cloud VM"
+              title={t('settings.cloud.title')}
+              subtitle={t('settings.cloud.subtitle')}
               icon={<Cloud className="w-5 h-5" />}
               defaultExpanded={false}
             >
               <SettingsSection
-                title="Cloud Provider"
-                description="Google Cloud Platform with IAP-secured access (no public IP)"
+                title={t('settings.cloud.provider.title')}
+                description={t('settings.cloud.provider.description')}
                 icon={<Cloud className="w-4 h-4" />}
               >
                 <div className="p-3 rounded-lg bg-surface-secondary border border-border-secondary">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-text-primary">Google Cloud Platform</span>
-                    <span className="px-2 py-0.5 text-xs bg-status-success/20 text-status-success rounded-full">IAP Secured</span>
+                    <span className="text-sm font-medium text-text-primary">{t('settings.cloud.provider.name')}</span>
+                    <span className="px-2 py-0.5 text-xs bg-status-success/20 text-status-success rounded-full">{t('settings.cloud.provider.badge')}</span>
                   </div>
-                  <p className="text-xs text-text-tertiary mt-1">e2-highmem-2 (2 vCPU, 16GB RAM) — access via IAP tunnel only, no public IP exposed</p>
+                  <p className="text-xs text-text-tertiary mt-1">{t('settings.cloud.provider.specs')}</p>
                 </div>
               </SettingsSection>
 
               <SettingsSection
-                title="Setup"
-                description="Run the interactive setup script to provision or re-authenticate your cloud VM"
+                title={t('settings.cloud.setup.title')}
+                description={t('settings.cloud.setup.description')}
                 icon={<Play className="w-4 h-4" />}
               >
                 <div className="p-3 rounded-lg bg-surface-secondary border border-border-secondary">
                   <p className="text-sm text-text-secondary mb-3">
-                    Opens a terminal panel running the cloud setup script. Handles first-time provisioning, gcloud authentication, and reconnection.
+                    {t('settings.cloud.setup.helper')}
                   </p>
                   {activeSessionId ? (
                     <Button
@@ -620,55 +692,55 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                       ) : (
                         <Terminal className="w-4 h-4 mr-2" />
                       )}
-                      Run Cloud Setup
+                      {t('settings.cloud.setup.button')}
                     </Button>
                   ) : (
                     <p className="text-xs text-text-tertiary">
-                      Create or select a session first to run the setup script.
+                      {t('settings.cloud.setup.empty')}
                     </p>
                   )}
                 </div>
               </SettingsSection>
 
               <SettingsSection
-                title="API Token"
-                description="Your GCP service account key or access token"
+                title={t('settings.cloud.apiToken.title')}
+                description={t('settings.cloud.apiToken.description')}
                 icon={<Shield className="w-4 h-4" />}
               >
                 <Input
-                  label="API Token"
+                  label={t('settings.cloud.apiToken.label')}
                   type="password"
                   value={cloudApiToken}
                   onChange={(e) => setCloudApiToken(e.target.value)}
-                  placeholder="GCP access token..."
+                  placeholder={t('settings.cloud.apiToken.placeholder')}
                   fullWidth
-                  helperText="Required to manage your cloud VM. Never shared or logged."
+                  helperText={t('settings.cloud.apiToken.helper')}
                 />
               </SettingsSection>
 
               <SettingsSection
-                title="Server Details"
-                description="VM identifiers from your Terraform output"
+                title={t('settings.cloud.server.title')}
+                description={t('settings.cloud.server.description')}
                 icon={<FileText className="w-4 h-4" />}
               >
                 <div className="space-y-3">
                   <Input
-                    label="Server ID"
+                    label={t('settings.cloud.server.idLabel')}
                     value={cloudServerId}
                     onChange={(e) => setCloudServerId(e.target.value)}
-                    placeholder="e.g. pane-user123"
+                    placeholder={t('settings.cloud.server.idPlaceholder')}
                     fullWidth
-                    helperText="GCP instance name from terraform output"
+                    helperText={t('settings.cloud.server.idHelper')}
                   />
                   <div className="relative">
                     <Input
-                      label="VNC Password"
+                      label={t('settings.cloud.server.vncLabel')}
                       type="password"
                       value={cloudVncPassword}
                       onChange={(e) => setCloudVncPassword(e.target.value)}
-                      placeholder="VNC password..."
+                      placeholder={t('settings.cloud.server.vncPlaceholder')}
                       fullWidth
-                      helperText="Password for noVNC access (set during VM setup)"
+                      helperText={t('settings.cloud.server.vncHelper')}
                     />
                     {cloudVncPassword && (
                       <button
@@ -679,7 +751,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                           setTimeout(() => setVncPasswordCopied(false), 2000);
                         }}
                         className="absolute right-2 top-[30px] p-1.5 rounded hover:bg-surface-secondary transition-colors"
-                        title="Copy password"
+                        title={t('common.copyPassword')}
                       >
                         {vncPasswordCopied ? (
                           <Check className="w-4 h-4 text-green-500" />
@@ -690,35 +762,35 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                     )}
                   </div>
                   <Input
-                    label="Region"
+                    label={t('settings.cloud.server.regionLabel')}
                     value={cloudRegion}
                     onChange={(e) => setCloudRegion(e.target.value)}
-                    placeholder="e.g. us-central1"
+                    placeholder={t('settings.cloud.server.regionPlaceholder')}
                     fullWidth
                   />
                   {cloudProvider === 'gcp' && (
                     <>
                       <Input
-                        label="GCP Project ID"
+                        label={t('settings.cloud.server.projectLabel')}
                         value={cloudGcpProjectId}
                         onChange={(e) => setCloudGcpProjectId(e.target.value)}
-                        placeholder="e.g. my-gcp-project"
+                        placeholder={t('settings.cloud.server.projectPlaceholder')}
                         fullWidth
                       />
                       <Input
-                        label="GCP Zone"
+                        label={t('settings.cloud.server.zoneLabel')}
                         value={cloudGcpZone}
                         onChange={(e) => setCloudGcpZone(e.target.value)}
-                        placeholder="e.g. us-central1-a"
+                        placeholder={t('settings.cloud.server.zonePlaceholder')}
                         fullWidth
                       />
                       <Input
-                        label="IAP Tunnel Port"
+                        label={t('settings.cloud.server.portLabel')}
                         value={cloudTunnelPort}
                         onChange={(e) => setCloudTunnelPort(e.target.value)}
-                        placeholder="8080"
+                        placeholder={t('settings.cloud.server.portPlaceholder')}
                         fullWidth
-                        helperText="Local port for IAP tunnel (default 8080). Must match --local-host-port in your gcloud tunnel command."
+                        helperText={t('settings.cloud.server.portHelper')}
                       />
                     </>
                   )}
@@ -726,14 +798,14 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
               </SettingsSection>
 
               <SettingsSection
-                title="Reset Cloud Configuration"
-                description="Clear settings or destroy cloud infrastructure"
+                title={t('settings.cloud.reset.title')}
+                description={t('settings.cloud.reset.description')}
                 icon={<Trash2 className="w-4 h-4" />}
               >
                 <div className="space-y-3">
                   <div className="p-3 rounded-lg bg-surface-secondary border border-border-secondary">
                     <p className="text-sm text-text-secondary mb-3">
-                      Clear local settings only. Use this if infrastructure was already destroyed or you want to re-configure.
+                      {t('settings.cloud.reset.localHelper')}
                     </p>
                     <Button
                       variant="secondary"
@@ -757,18 +829,18 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                       }}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Clear Local Settings
+                      {t('settings.cloud.reset.clearButton')}
                     </Button>
                   </div>
                   <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
                     <p className="text-sm text-text-secondary mb-2">
-                      To fully destroy the cloud VM and clean up GCP resources, run:
+                      {t('settings.cloud.reset.destroyIntro')}
                     </p>
                     <code className="block text-xs bg-surface-primary p-2 rounded border border-border-primary mb-2 font-mono">
                       bash cloud/scripts/setup-cloud.sh --destroy
                     </code>
                     <p className="text-xs text-text-tertiary">
-                      This will run terraform destroy and delete the GCP project.
+                      {t('settings.cloud.reset.destroyHelper')}
                     </p>
                   </div>
                 </div>
@@ -777,20 +849,20 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
 
             {/* System Updates */}
             <CollapsibleCard
-              title="Updates & Maintenance"
-              subtitle="Keep Pane up to date with the latest features"
+              title={t('settings.updates.title')}
+              subtitle={t('settings.updates.subtitle')}
               icon={<RefreshCw className="w-5 h-5" />}
               defaultExpanded={false}
             >
               <SettingsSection
-                title="Automatic Updates"
-                description="Stay current with new features and bug fixes"
+                title={t('settings.updates.auto.title')}
+                description={t('settings.updates.auto.description')}
                 icon={<RefreshCw className="w-4 h-4" />}
               >
                 <div className="flex items-center justify-between p-3 bg-surface-secondary rounded-lg border border-border-secondary">
                   <div className="flex items-center gap-3">
                     <Checkbox
-                      label="Check for updates automatically"
+                      label={t('settings.updates.auto.checkbox')}
                       checked={autoCheckUpdates}
                       onChange={(e) => setAutoCheckUpdates(e.target.checked)}
                     />
@@ -806,61 +878,61 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                           if (response.data.hasUpdate) {
                             // Update will be shown via the version update event
                           } else {
-                            alert('You are running the latest version of Pane!');
+                            alert(t('settings.updates.auto.latest'));
                           }
                         }
                       } catch (error) {
                         console.error('Failed to check for updates:', error);
-                        alert('Failed to check for updates. Please try again later.');
+                        alert(t('settings.updates.auto.error'));
                       }
                     }}
                   >
-                    Check Now
+                    {t('settings.updates.auto.checkNow')}
                   </Button>
                 </div>
                 <p className="text-xs text-text-tertiary mt-2">
-                  We check GitHub for new releases every 24 hours. Updates require manual installation.
+                  {t('settings.updates.auto.helper')}
                 </p>
               </SettingsSection>
             </CollapsibleCard>
 
             {/* Advanced Options */}
             <CollapsibleCard
-              title="Advanced Options"
-              subtitle="Technical settings for power users"
+              title={t('settings.advanced.title')}
+              subtitle={t('settings.advanced.subtitle')}
               icon={<Eye className="w-5 h-5" />}
               defaultExpanded={false}
               variant="subtle"
             >
               <SettingsSection
-                title="Debugging"
-                description="Enable detailed logging for troubleshooting"
+                title={t('settings.advanced.debugging.title')}
+                description={t('settings.advanced.debugging.description')}
                 icon={<FileText className="w-4 h-4" />}
               >
                 <Checkbox
-                  label="Enable verbose logging"
+                  label={t('settings.advanced.debugging.verboseLabel')}
                   checked={verbose}
                   onChange={(e) => setVerbose(e.target.checked)}
                 />
                 <p className="text-xs text-text-tertiary mt-1">
-                  Shows detailed logs for pane creation and Claude Code execution. Useful for debugging issues.
+                  {t('settings.advanced.debugging.verboseHelper')}
                 </p>
                 
                 <div className="mt-4">
                   <Checkbox
-                    label="Enable dev mode"
+                    label={t('settings.advanced.debugging.devModeLabel')}
                     checked={devMode}
                     onChange={(e) => setDevMode(e.target.checked)}
                   />
                   <p className="text-xs text-text-tertiary mt-1">
-                    Adds a "Messages" tab to each pane showing raw JSON responses from Claude Code. Useful for debugging and development.
+                    {t('settings.advanced.debugging.devModeHelper')}
                   </p>
                 </div>
               </SettingsSection>
 
               <SettingsSection
-                title="Additional PATH Directories"
-                description="Add custom directories to the PATH environment variable"
+                title={t('settings.advanced.path.title')}
+                description={t('settings.advanced.path.description')}
                 icon={<FileText className="w-4 h-4" />}
               >
                 <Textarea
@@ -876,20 +948,14 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                   }
                   rows={4}
                   fullWidth
-                  helperText={
-                    `Enter one directory path per line. These will be added to PATH for all tools.\n${
-                      platform === 'win32' 
-                        ? "Windows: Use backslashes (C:\\path) or forward slashes (C:/path). Environment variables like %USERPROFILE% are supported."
-                        : "Unix/macOS: Use forward slashes (/path). The tilde (~) expands to your home directory."
-                    }\nNote: Changes require restarting Pane to take full effect.`
-                  }
+                  helperText={additionalPathsHelperText}
                 />
               </SettingsSection>
 
               {platform === 'win32' && (
                 <SettingsSection
-                  title="Terminal Shell"
-                  description="Default shell for terminal panels"
+                  title={t('common.terminalShell.label')}
+                  description={t('settings.terminalShell.description')}
                   icon={<Terminal className="w-4 h-4" />}
                 >
                   <Dropdown
@@ -898,12 +964,12 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                         type="button"
                         className="w-full px-4 py-3 bg-surface-secondary hover:bg-surface-hover rounded-lg transition-colors border border-border-secondary text-text-primary focus:outline-none focus:ring-2 focus:ring-interactive cursor-pointer flex items-center justify-between"
                       >
-                        <span>{preferredShell === 'auto' ? 'Auto-detect (Git Bash preferred)' : availableShells.find(s => s.id === preferredShell)?.name ?? preferredShell}</span>
+                        <span>{getShellPreferenceLabel(preferredShell, availableShells.find(s => s.id === preferredShell)?.name, t, 'long')}</span>
                         <ChevronDown className="w-4 h-4 text-text-tertiary" />
                       </button>
                     }
                     items={[
-                      { id: 'auto', label: 'Auto-detect (Git Bash preferred)', onClick: () => setPreferredShell('auto') },
+                      { id: 'auto', label: t('common.shell.autoLong'), onClick: () => setPreferredShell('auto') },
                       ...availableShells.map(shell => ({
                         id: shell.id,
                         label: shell.name,
@@ -918,8 +984,8 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
               )}
 
               <SettingsSection
-                title="Custom Claude Installation"
-                description="Override the default Claude executable path"
+                title={t('settings.advanced.claude.title')}
+                description={t('settings.advanced.claude.description')}
                 icon={<FileText className="w-4 h-4" />}
               >
                 <div className="flex gap-2">
@@ -929,7 +995,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                     value={claudeExecutablePath}
                     onChange={(e) => setClaudeExecutablePath(e.target.value)}
                     className="flex-1 px-3 py-2 border border-border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-interactive text-text-primary bg-surface-secondary"
-                    placeholder="/usr/local/bin/claude"
+                    placeholder={t('settings.advanced.claude.inputPlaceholder')}
                   />
                   <Button
                     type="button"
@@ -937,11 +1003,11 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                     size="sm"
                     onClick={async () => {
                       const result = await API.dialog.openFile({
-                        title: 'Select Claude Executable',
-                        buttonLabel: 'Select',
+                        title: t('settings.advanced.claude.dialogTitle'),
+                        buttonLabel: t('settings.advanced.claude.dialogButton'),
                         properties: ['openFile'],
                         filters: [
-                          { name: 'Executables', extensions: ['*'] }
+                          { name: t('common.executables'), extensions: ['*'] }
                         ]
                       });
                       if (result.success && result.data) {
@@ -949,11 +1015,11 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                       }
                     }}
                   >
-                    Browse
+                    {t('common.browse')}
                   </Button>
                 </div>
                 <p className="text-xs text-text-tertiary mt-1">
-                  Leave empty to use the 'claude' command from your system PATH.
+                  {t('settings.advanced.claude.helper')}
                 </p>
               </SettingsSection>
             </CollapsibleCard>
@@ -980,8 +1046,8 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
             <div className="flex items-center gap-3 mb-2">
               <Keyboard className="w-5 h-5 text-text-secondary" />
               <div>
-                <h3 className="text-sm font-medium text-text-primary">Terminal Shortcuts</h3>
-                <p className="text-xs text-text-tertiary">Bind Ctrl+Alt+letter shortcuts to paste text snippets anywhere</p>
+                <h3 className="text-sm font-medium text-text-primary">{t('settings.shortcuts.header.title')}</h3>
+                <p className="text-xs text-text-tertiary">{t('settings.shortcuts.header.subtitle')}</p>
               </div>
             </div>
 
@@ -990,19 +1056,19 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                 <div key={shortcut.id} className="p-3 rounded-lg bg-surface-secondary border border-border-secondary space-y-3">
                   <div className="flex items-center gap-3">
                     <Input
-                      label="Label"
+                      label={t('settings.shortcuts.label')}
                       value={shortcut.label}
                       onChange={(e) => {
                         const updated = [...terminalShortcuts];
                         updated[index] = { ...updated[index], label: e.target.value };
                         setTerminalShortcuts(updated);
                       }}
-                      placeholder="e.g. Run tests"
+                      placeholder={t('settings.shortcuts.labelPlaceholder')}
                       fullWidth
                     />
                     <div className="flex-shrink-0 w-24">
                       <Input
-                        label="Key"
+                        label={t('settings.shortcuts.key')}
                         value={shortcut.key}
                         onChange={(e) => {
                           const val = e.target.value.toLowerCase().replace(/[^a-z]/g, '').slice(0, 1);
@@ -1010,7 +1076,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                           updated[index] = { ...updated[index], key: val };
                           setTerminalShortcuts(updated);
                         }}
-                        placeholder="a-z"
+                        placeholder={t('settings.shortcuts.keyPlaceholder')}
                         fullWidth
                       />
                     </div>
@@ -1027,7 +1093,7 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                             ? 'text-status-success hover:bg-status-success/10'
                             : 'text-text-tertiary hover:bg-surface-hover'
                         }`}
-                        title={shortcut.enabled ? 'Enabled — click to disable' : 'Disabled — click to enable'}
+                        title={shortcut.enabled ? t('settings.shortcuts.toggleEnabled') : t('settings.shortcuts.toggleDisabled')}
                       >
                         {shortcut.enabled ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
                       </button>
@@ -1037,26 +1103,28 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                           setTerminalShortcuts(terminalShortcuts.filter((_, i) => i !== index));
                         }}
                         className="p-2 rounded-md text-text-tertiary hover:text-status-error hover:bg-status-error/10 transition-colors"
-                        title="Delete shortcut"
+                        title={t('settings.shortcuts.delete')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                   <Textarea
-                    label="Snippet text"
+                    label={t('settings.shortcuts.snippet')}
                     value={shortcut.text}
                     onChange={(e) => {
                       const updated = [...terminalShortcuts];
                       updated[index] = { ...updated[index], text: e.target.value };
                       setTerminalShortcuts(updated);
                     }}
-                    placeholder="Text to paste when shortcut is triggered..."
+                    placeholder={t('settings.shortcuts.snippetPlaceholder')}
                     rows={2}
                     fullWidth
                   />
                   <p className="text-xs text-text-tertiary">
-                    {shortcut.key ? `Hotkey: Ctrl/Cmd + Alt + ${shortcut.key.toUpperCase()}` : 'Set a key (a-z) to assign a hotkey'}
+                    {shortcut.key
+                      ? interpolateTranslation(t('settings.shortcuts.hotkey'), { key: shortcut.key.toUpperCase() })
+                      : t('settings.shortcuts.hotkeyUnset')}
                   </p>
                 </div>
               ))}
@@ -1078,11 +1146,11 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                 }}
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add Shortcut
+                {t('settings.shortcuts.add')}
               </Button>
               {terminalShortcuts.length === 0 && (
                 <p className="text-sm text-text-tertiary">
-                  No shortcuts configured. Add one to bind a Ctrl+Alt+letter hotkey that pastes text into any terminal or input field.
+                  {t('settings.shortcuts.empty')}
                 </p>
               )}
             </div>
@@ -1099,72 +1167,72 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
           <form id="analytics-form" onSubmit={handleSubmit} className="space-y-6">
             {/* Analytics Overview */}
             <CollapsibleCard
-              title="About Analytics"
-              subtitle="Help improve Pane by sharing anonymous usage data"
+              title={t('settings.analytics.overview.title')}
+              subtitle={t('settings.analytics.overview.subtitle')}
               icon={<BarChart3 className="w-5 h-5" />}
               defaultExpanded={true}
               variant="subtle"
             >
               <div className="space-y-4">
                 <p className="text-sm text-text-secondary leading-relaxed">
-                  Pane collects anonymous usage analytics to understand how the application is used and to help prioritize improvements. All data is completely anonymous and privacy-focused.
+                  {t('settings.analytics.overview.body')}
                 </p>
 
                 <div className="bg-surface-tertiary rounded-lg p-4 border border-border-secondary">
-                  <h4 className="font-medium text-text-primary mb-3 text-sm">✅ What we track:</h4>
+                  <h4 className="font-medium text-text-primary mb-3 text-sm">{t('settings.analytics.track.title')}</h4>
                   <ul className="space-y-1 text-xs text-text-secondary">
-                    <li>• Feature usage patterns (which features are used)</li>
-                    <li>• Pane counts and statuses</li>
-                    <li>• Git operation types (rebase, squash, etc.)</li>
-                    <li>• UI interactions (view switches, button clicks)</li>
-                    <li>• Error types (generic categories only)</li>
-                    <li>• Performance metrics (categorized durations)</li>
+                    <li>• {t('settings.analytics.track.item1')}</li>
+                    <li>• {t('settings.analytics.track.item2')}</li>
+                    <li>• {t('settings.analytics.track.item3')}</li>
+                    <li>• {t('settings.analytics.track.item4')}</li>
+                    <li>• {t('settings.analytics.track.item5')}</li>
+                    <li>• {t('settings.analytics.track.item6')}</li>
                   </ul>
                 </div>
 
                 <div className="bg-status-error/10 rounded-lg p-4 border border-status-error/30">
-                  <h4 className="font-medium text-text-primary mb-3 text-sm">❌ What we NEVER track:</h4>
+                  <h4 className="font-medium text-text-primary mb-3 text-sm">{t('settings.analytics.never.title')}</h4>
                   <ul className="space-y-1 text-xs text-text-secondary">
-                    <li>• Your prompts or AI responses</li>
-                    <li>• File paths, names, or directory structures</li>
-                    <li>• Project names or descriptions</li>
-                    <li>• Git commit messages or code diffs</li>
-                    <li>• Terminal output or commands</li>
-                    <li>• Personal identifiers (emails, usernames, API keys)</li>
+                    <li>• {t('settings.analytics.never.item1')}</li>
+                    <li>• {t('settings.analytics.never.item2')}</li>
+                    <li>• {t('settings.analytics.never.item3')}</li>
+                    <li>• {t('settings.analytics.never.item4')}</li>
+                    <li>• {t('settings.analytics.never.item5')}</li>
+                    <li>• {t('settings.analytics.never.item6')}</li>
                   </ul>
                 </div>
 
                 <p className="text-xs text-text-tertiary italic">
-                  You can opt-out at any time. When disabled, no analytics data will be collected or sent.
+                  {t('settings.analytics.overview.optOut')}
                 </p>
               </div>
             </CollapsibleCard>
 
             {/* Analytics Settings */}
             <CollapsibleCard
-              title="Analytics Settings"
-              subtitle="Configure anonymous usage tracking"
+              title={t('settings.analytics.settings.title')}
+              subtitle={t('settings.analytics.settings.subtitle')}
               icon={<BarChart3 className="w-5 h-5" />}
               defaultExpanded={true}
             >
               <SettingsSection
-                title="Enable Analytics"
-                description="Allow Pane to collect anonymous usage data to improve the product"
+                title={t('settings.analytics.enable.title')}
+                description={t('settings.analytics.enable.description')}
                 icon={<BarChart3 className="w-4 h-4" />}
               >
                 <Checkbox
-                  label="Enable anonymous analytics tracking"
+                  label={t('settings.analytics.enable.checkbox')}
                   checked={analyticsEnabled}
                   onChange={(e) => setAnalyticsEnabled(e.target.checked)}
                 />
                 {!analyticsEnabled && (
                   <p className="text-xs text-status-warning mt-2">
-                    Analytics is disabled. No data will be collected or sent.
+                    {t('settings.analytics.enable.disabled')}
                   </p>
                 )}
                 {analyticsEnabled && (
                   <p className="text-xs text-status-success mt-2">
-                    Analytics is enabled. Thank you for helping improve Pane!
+                    {t('settings.analytics.enable.enabled')}
                   </p>
                 )}
               </SettingsSection>
@@ -1189,17 +1257,25 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
             onClick={onClose}
             disabled={isSubmitting}
           >
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
-            type={activeTab === 'general' || activeTab === 'shortcuts' ? 'submit' : 'button'}
-            form={activeTab === 'general' ? 'settings-form' : activeTab === 'shortcuts' ? 'shortcuts-form' : undefined}
+            type={activeTab === 'general' || activeTab === 'shortcuts' || activeTab === 'analytics' ? 'submit' : 'button'}
+            form={
+              activeTab === 'general'
+                ? 'settings-form'
+                : activeTab === 'shortcuts'
+                  ? 'shortcuts-form'
+                  : activeTab === 'analytics'
+                    ? 'analytics-form'
+                    : undefined
+            }
             onClick={activeTab === 'notifications' ? (e) => handleSubmit(e as React.FormEvent) : undefined}
             disabled={isSubmitting}
             loading={isSubmitting}
             variant="primary"
           >
-            Save Changes
+            {t('common.saveChanges')}
           </Button>
         </ModalFooter>
       )}

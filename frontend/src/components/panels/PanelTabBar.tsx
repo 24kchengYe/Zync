@@ -13,6 +13,8 @@ import { useHotkeyStore } from '../../stores/hotkeyStore';
 import { Tooltip } from '../ui/Tooltip';
 import { Kbd } from '../ui/Kbd';
 import { useResourceMonitor } from '../../hooks/useResourceMonitor';
+import { interpolateTranslation, useI18n } from '../../../../UpdateWuruize/frontend/I18nContext';
+import type { WorkspaceLayoutMode } from '../../../../UpdateWuruize/frontend/WorkspaceLayoutDemoState';
 
 function formatMemory(mb: number): string {
   if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
@@ -43,6 +45,53 @@ Analyze this project's actual framework and structure first, then create the com
 
 IMPORTANT: After creating the script, TEST THE RESTART PATH — run 'node scripts/pane-run-script.js', then kill it ungracefully (Ctrl+C or kill the terminal), then run it again. It must reclaim the same port without EADDRINUSE or lock file errors. A single happy-path run proves nothing. Then commit and merge to main so all future worktrees have it.`;
 
+function LayoutSwatch({ mode }: { mode: WorkspaceLayoutMode }) {
+  if (mode === 'single') {
+    return (
+      <div className="flex h-6 w-6 items-center justify-center rounded border border-border-primary bg-surface-secondary p-1">
+        <div className="h-full w-full rounded-sm border border-border-primary bg-surface-hover" />
+      </div>
+    );
+  }
+
+  if (mode === 'columns') {
+    return (
+      <div className="grid h-6 w-6 grid-cols-2 gap-1 rounded border border-border-primary bg-surface-secondary p-1">
+        <div className="rounded-sm border border-border-primary bg-surface-hover" />
+        <div className="rounded-sm border border-border-primary bg-surface-hover" />
+      </div>
+    );
+  }
+
+  if (mode === 'topBottomGrid') {
+    return (
+      <div className="grid h-6 w-6 grid-cols-2 grid-rows-2 gap-1 rounded border border-border-primary bg-surface-secondary p-1">
+        <div className="col-span-2 rounded-sm border border-border-primary bg-surface-hover" />
+        <div className="rounded-sm border border-border-primary bg-surface-hover" />
+        <div className="rounded-sm border border-border-primary bg-surface-hover" />
+      </div>
+    );
+  }
+
+  if (mode === 'quad') {
+    return (
+      <div className="grid h-6 w-6 grid-cols-2 grid-rows-2 gap-1 rounded border border-border-primary bg-surface-secondary p-1">
+        <div className="rounded-sm border border-border-primary bg-surface-hover" />
+        <div className="rounded-sm border border-border-primary bg-surface-hover" />
+        <div className="rounded-sm border border-border-primary bg-surface-hover" />
+        <div className="rounded-sm border border-border-primary bg-surface-hover" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid h-6 w-6 grid-rows-2 gap-1 rounded border border-border-primary bg-surface-secondary p-1">
+      <div className="rounded-sm border border-border-primary bg-surface-hover" />
+      <div className="rounded-sm border border-border-primary bg-surface-hover" />
+    </div>
+  );
+}
+
 export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
   panels,
   activePanel,
@@ -51,10 +100,13 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
   onPanelCreate,
   context = 'worktree',  // Default to worktree for backward compatibility
   onToggleDetailPanel,
-  detailPanelVisible
+  detailPanelVisible,
+  layoutMode,
+  onLayoutModeChange,
 }) => {
   const sessionContext = useSession();
   const session = sessionContext?.session;
+  const { t } = useI18n();
   const { config, fetchConfig, updateConfig } = useConfigStore();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -71,6 +123,8 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
   const [listEditingId, setListEditingId] = useState<string | null>(null);
   const [listEditingTitle, setListEditingTitle] = useState('');
   const listEditInputRef = useRef<HTMLInputElement>(null);
+  const [showLayoutMenu, setShowLayoutMenu] = useState(false);
+  const layoutMenuRef = useRef<HTMLDivElement>(null);
 
   // Resource monitor state
   const [showResourcePopover, setShowResourcePopover] = useState(false);
@@ -188,13 +242,13 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
     if (panel.type === 'logs') {
       const logsState = panel.state?.customState as LogsPanelState;
       if (logsState?.isRunning) {
-        alert('Cannot close logs panel while process is running. Please stop the process first.');
+        alert(t('panelTabs.logsPanelRunning'));
         return;
       }
     }
     
     onPanelClose(panel);
-  }, [onPanelClose]);
+  }, [onPanelClose, t]);
   
   const handleAddPanel = useCallback((type: ToolPanelType, options?: PanelCreateOptions) => {
     onPanelCreate(type, options);
@@ -261,6 +315,24 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showDropdown]);
+
+  useEffect(() => {
+    if (!showLayoutMenu) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        layoutMenuRef.current &&
+        event.target &&
+        event.target instanceof Node &&
+        !layoutMenuRef.current.contains(event.target)
+      ) {
+        setShowLayoutMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showLayoutMenu]);
 
   // Close panel list when clicking outside
   // Use a portal-aware ref to include the dropdown body rendered via createPortal
@@ -358,7 +430,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
   // Ctrl+T: open Add Tool dropdown
   useHotkey({
     id: 'open-add-tool',
-    label: 'Open Add Tool menu',
+    label: t('panelTabs.openAddToolMenu'),
     keys: 'mod+t',
     category: 'tabs',
     action: () => setShowDropdown(true),
@@ -405,6 +477,54 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
     }
   };
 
+  const getPanelTypeLabel = useCallback((type: ToolPanelType) => {
+    switch (type) {
+      case 'diff':
+        return t('panelTabs.tool.diff');
+      case 'terminal':
+        return t('panelTabs.tool.terminal');
+      case 'explorer':
+        return t('panelTabs.tool.explorer');
+      case 'dashboard':
+        return t('panelTabs.tool.dashboard');
+      case 'logs':
+        return t('panelTabs.tool.logs');
+      case 'setup-tasks':
+        return t('panelTabs.tool.setupTasks');
+      default:
+        return type;
+    }
+  }, [t]);
+
+  const getDisplayTitle = useCallback((panel: ToolPanel) => {
+    if (panel.type === 'diff') {
+      return t('panelTabs.tool.diff');
+    }
+
+    const defaultEnglishTitles: Partial<Record<ToolPanelType, string>> = {
+      terminal: 'Terminal',
+      explorer: 'Explorer',
+      dashboard: 'Status Panel',
+      logs: 'Logs',
+      'setup-tasks': 'Setup Tasks',
+    };
+
+    const defaultTitle = defaultEnglishTitles[panel.type];
+    if (defaultTitle && panel.title === defaultTitle) {
+      return getPanelTypeLabel(panel.type);
+    }
+
+    return panel.title;
+  }, [getPanelTypeLabel, t]);
+
+  const getLayoutModeLabel = useCallback((mode: WorkspaceLayoutMode) => {
+    if (mode === 'columns') return t('panelTabs.layout.mode.columns');
+    if (mode === 'rows') return t('panelTabs.layout.mode.rows');
+    if (mode === 'topBottomGrid') return t('panelTabs.layout.mode.topBottomGrid');
+    if (mode === 'quad') return t('panelTabs.layout.mode.quad');
+    return t('panelTabs.layout.mode.single');
+  }, [t]);
+
   // Sort panels: explorer first, diff second, then by position
   const sortedPanels = useMemo(() => {
     const typeOrder = (type: string) => {
@@ -426,7 +546,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
       <div
         className="flex items-center min-h-[var(--panel-tab-height)] px-2 gap-x-1"
         role="tablist"
-        aria-label="Panel Tabs"
+        aria-label={t('panelTabs.panelTabsAriaLabel')}
       >
         {/* Scrollable tab area — mouse wheel scrolls horizontally */}
         <div
@@ -443,7 +563,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
           const isPermanent = panel.metadata?.permanent === true;
           const isEditing = editingPanelId === panel.id;
           const isDiffPanel = panel.type === 'diff';
-          const displayTitle = isDiffPanel ? 'Diff' : panel.title;
+          const displayTitle = getDisplayTitle(panel);
           const shortcutHint = index < 9 ? formatKeyDisplay(`alt+${index + 1}`) : undefined;
 
           const tab = (
@@ -487,7 +607,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                     <button
                       className="ml-1 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity transition-colors text-text-muted hover:bg-surface-hover hover:text-text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring-subtle"
                       onClick={(e) => handleStartRename(e, panel)}
-                      title="Rename panel"
+                      title={t('panelTabs.renamePanel')}
                     >
                       <Edit2 className="w-3 h-3" />
                     </button>
@@ -522,7 +642,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
         {/* Panel list dropdown — quick overview & jump when many tabs are open */}
         {sortedPanels.length > 3 && (
           <div className="relative h-9 flex items-center ml-1 flex-shrink-0" ref={panelListRef}>
-            <Tooltip content="All panels" side="bottom">
+            <Tooltip content={t('panelTabs.allPanels')} side="bottom">
               <button
                 className="inline-flex items-center h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-hover rounded transition-colors"
                 onClick={() => setShowPanelList(!showPanelList)}
@@ -542,8 +662,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
               >
                 {sortedPanels.map(panel => {
                   const isActive = activePanel?.id === panel.id;
-                  const isDiff = panel.type === 'diff';
-                  const title = isDiff ? 'Diff' : panel.title;
+                  const title = getDisplayTitle(panel);
                   const isPermanent = panel.metadata?.permanent === true;
                   const isListEditing = listEditingId === panel.id;
                   const canRename = panel.type !== 'diff' && panel.type !== 'explorer';
@@ -608,7 +727,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                         <button
                           className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-surface-active rounded transition-opacity flex-shrink-0"
                           onClick={(e) => { e.stopPropagation(); onPanelClose(panel); }}
-                          title="Close panel"
+                          title={t('panelTabs.closePanel')}
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -621,7 +740,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                             setListEditingId(panel.id);
                             setListEditingTitle(panel.title);
                           }}
-                          title="Rename"
+                          title={t('panelTabs.renamePanel')}
                         >
                           <Edit2 className="w-3 h-3" />
                         </button>
@@ -651,7 +770,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
               aria-expanded={showDropdown}
             >
               <Plus className="w-4 h-4 mr-1" />
-              Add Tool
+              {t('panelTabs.addTool')}
               <ChevronDown className="w-3 h-3 ml-1" />
             </button>
           </Tooltip>
@@ -676,7 +795,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                   onClick={() => handleAddPanel('terminal')}
                 >
                   <Terminal className="w-4 h-4 flex-shrink-0" />
-                  <span className="ml-2">Terminal</span>
+                  <span className="ml-2">{t('panelTabs.tool.terminal')}</span>
                   {hotkeyDisplay('add-tool-terminal') && <Kbd size="xs" variant="muted" className="ml-auto">{hotkeyDisplay('add-tool-terminal')}</Kbd>}
                 </button>
               )}
@@ -689,7 +808,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                   onClick={() => handleAddPanel('explorer')}
                 >
                   <FolderTree className="w-4 h-4 flex-shrink-0" />
-                  <span className="ml-2">Explorer</span>
+                  <span className="ml-2">{t('panelTabs.tool.explorer')}</span>
                   {hotkeyDisplay('add-tool-explorer') && <Kbd size="xs" variant="muted" className="ml-auto">{hotkeyDisplay('add-tool-explorer')}</Kbd>}
                 </button>
               )}
@@ -705,7 +824,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                   })}
                 >
                   <Terminal className="w-4 h-4 flex-shrink-0" />
-                  <span className="ml-2">Terminal (Claude)</span>
+                  <span className="ml-2">{t('panelTabs.tool.terminalClaude')}</span>
                   {hotkeyDisplay('add-tool-terminal-claude') && <Kbd size="xs" variant="muted" className="ml-auto">{hotkeyDisplay('add-tool-terminal-claude')}</Kbd>}
                 </button>
               )}
@@ -721,7 +840,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                   })}
                 >
                   <Terminal className="w-4 h-4 flex-shrink-0" />
-                  <span className="ml-2">Terminal (Codex)</span>
+                  <span className="ml-2">{t('panelTabs.tool.terminalCodex')}</span>
                   {hotkeyDisplay('add-tool-terminal-codex') && <Kbd size="xs" variant="muted" className="ml-auto">{hotkeyDisplay('add-tool-terminal-codex')}</Kbd>}
                 </button>
               )}
@@ -747,7 +866,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                       deleteCustomCommand(index);
                     }
                   }}
-                  title={`${cmd.name} (Delete/Backspace to remove)`}
+                  title={interpolateTranslation(t('panelTabs.customCommand.deleteHint'), { name: cmd.name })}
                 >
                   <TerminalSquare className="w-4 h-4 flex-shrink-0" />
                   <span className="ml-2 truncate">{cmd.name}</span>
@@ -758,12 +877,12 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
               {availablePanelTypes.includes('terminal') && (
                 showCustomInput ? (
                   <div className="px-3 py-2 border-b border-border-primary">
-                    <label className="text-xs text-text-tertiary mb-1 block">Command to run:</label>
+                    <label className="text-xs text-text-tertiary mb-1 block">{t('panelTabs.customCommand.commandToRun')}</label>
                     <input
                       ref={(el) => { customInputRef.current = el; dropdownItemsRef.current[refIndex++] = el; }}
                       type="text"
                       className="w-full px-2 py-1.5 text-sm bg-surface-secondary border border-border-primary rounded text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus focus:ring-1 focus:ring-border-focus"
-                      placeholder="e.g. aider, npm run dev, bash"
+                      placeholder={t('panelTabs.customCommand.placeholder')}
                       value={customCommand}
                       onChange={(e) => setCustomCommand(e.target.value)}
                       onKeyDown={(e) => {
@@ -794,7 +913,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                     onClick={() => setShowCustomInput(true)}
                   >
                     <Plus className="w-4 h-4 flex-shrink-0" />
-                    <span className="ml-2">Add Custom Command...</span>
+                    <span className="ml-2">{t('panelTabs.customCommand.add')}</span>
                   </button>
                 )
               )}
@@ -810,7 +929,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                   onClick={() => handleAddPanel(type)}
                 >
                   {getPanelIcon(type)}
-                  <span className="ml-2 capitalize">{type}</span>
+                  <span className="ml-2">{getPanelTypeLabel(type)}</span>
                 </button>
               );})}
             </div>
@@ -830,7 +949,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                 ? "text-text-primary bg-surface-hover"
                 : "text-text-tertiary hover:text-text-primary hover:bg-surface-hover"
             )}
-            title="Resource Usage"
+            title={t('panelTabs.resourceUsage')}
           >
             <Cpu className="w-3.5 h-3.5" />
             {snapshot && (
@@ -848,7 +967,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
 
           {/* Run Dev Server button */}
           {session && (
-            <Tooltip content="Run Dev Server" side="bottom">
+            <Tooltip content={t('panelTabs.runDevServer')} side="bottom">
               <button
                 className="inline-flex items-center h-9 px-2 text-text-tertiary hover:text-status-success hover:bg-surface-hover transition-colors flex-shrink-0"
                 onClick={async () => {
@@ -860,16 +979,16 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                   if (scriptExists) {
                     handleAddPanel('terminal', {
                       initialCommand: 'node scripts/pane-run-script.js',
-                      title: 'Dev Server'
+                      title: t('panelTabs.devServerLabel')
                     });
                   } else {
                     handleAddPanel('terminal', {
                       initialCommand: `${session?.permissionMode === 'approve' ? 'claude' : 'claude --dangerously-skip-permissions'} "${SETUP_RUN_SCRIPT_PROMPT.replace(/\n/g, ' ')}"`,
-                      title: 'Setup Run Script'
+                      title: t('panelTabs.setupRunScriptLabel')
                     });
                   }
                 }}
-                title="Run Dev Server"
+                title={t('panelTabs.runDevServer')}
               >
                 <Play className="w-4 h-4" />
               </button>
@@ -877,17 +996,73 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
           )}
 
           {/* DevTools toggle */}
-          <Tooltip content="Developer Tools" side="bottom">
+          <Tooltip content={t('panelTabs.devTools')} side="bottom">
             <button
               className="inline-flex items-center h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-hover transition-colors flex-shrink-0"
               onClick={() => {
                 window.electronAPI?.invoke('toggle-devtools');
               }}
-              title="Developer Tools"
+              title={t('panelTabs.devTools')}
             >
               <Bug className="w-4 h-4" />
             </button>
           </Tooltip>
+
+          {/* Layout controls */}
+          {onLayoutModeChange && (
+            <div className="relative" ref={layoutMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowLayoutMenu((current) => !current)}
+                className={cn(
+                  "inline-flex items-center gap-2 h-9 px-3 rounded transition-colors",
+                  showLayoutMenu
+                    ? "text-text-primary bg-surface-hover"
+                    : "text-text-tertiary hover:text-text-primary hover:bg-surface-hover"
+                )}
+                title={t('panelTabs.layout.button')}
+              >
+                <List className="w-4 h-4" />
+                <span className="text-sm">{t('panelTabs.layout.button')}</span>
+                {layoutMode ? (
+                  <span className="text-xs text-text-quaternary">
+                    {getLayoutModeLabel(layoutMode)}
+                  </span>
+                ) : null}
+              </button>
+
+              {showLayoutMenu ? (
+                <div className="absolute right-0 top-full mt-1 w-[280px] rounded-lg border border-border-primary bg-surface-primary shadow-dropdown z-50 overflow-hidden animate-dropdown-enter">
+                  <div className="border-b border-border-primary px-4 py-3">
+                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+                      {t('panelTabs.layout.title')}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 p-3">
+                    {(['single', 'columns', 'rows', 'topBottomGrid', 'quad'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => onLayoutModeChange(mode)}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors",
+                          layoutMode === mode
+                            ? "border-interactive bg-interactive/10 text-text-primary"
+                            : "border-border-primary text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+                        )}
+                      >
+                        <LayoutSwatch mode={mode} />
+                        <div>
+                          <div className="text-sm font-medium">{getLayoutModeLabel(mode)}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
 
           {/* Detail panel toggle */}
           {onToggleDetailPanel && (
@@ -900,7 +1075,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                     ? "text-text-primary bg-surface-hover"
                     : "text-text-tertiary hover:text-text-primary hover:bg-surface-hover"
                 )}
-                title={detailPanelVisible ? "Hide detail panel" : "Show detail panel"}
+                title={detailPanelVisible ? t('panelTabs.detailPanel.hide') : t('panelTabs.detailPanel.show')}
               >
                 <PanelRight className="w-4 h-4" />
               </button>
@@ -920,7 +1095,7 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border-secondary">
           <span className="text-[10px] font-semibold text-text-tertiary tracking-wider uppercase">
-            Resource Usage
+            {t('panelTabs.resourceUsage')}
           </span>
           <button
             onClick={handleRefresh}

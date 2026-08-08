@@ -8,6 +8,7 @@ import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
 import { Checkbox } from './ui/Input';
 import { cn } from '../utils/cn';
+import { interpolateTranslation, useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
 
 interface CommitModeSettingsProps {
   projectId?: number;
@@ -24,6 +25,7 @@ export function CommitModeSettings({
   onChange,
   className = ''
 }: CommitModeSettingsProps) {
+  const { t } = useI18n();
   const [characteristics, setCharacteristics] = useState<ProjectCharacteristics | null>(null);
   const [loadingCharacteristics, setLoadingCharacteristics] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
@@ -86,12 +88,32 @@ export function CommitModeSettings({
     onChange(localSettings.mode, newSettings);
   };
 
+  const getModeLabel = (commitMode: CommitMode) => {
+    switch (commitMode) {
+      case 'structured':
+        return t('commitMode.mode.structured');
+      case 'checkpoint':
+        return t('commitMode.mode.checkpoint');
+      case 'disabled':
+      default:
+        return t('commitMode.mode.disabled');
+    }
+  };
+
+  const recommendationDetails = characteristics
+    ? [
+        characteristics.hasHusky ? t('commitMode.recommendation.hasHusky') : null,
+        characteristics.hasChangeset ? t('commitMode.recommendation.hasChangeset') : null,
+        characteristics.hasConventionalCommits ? t('commitMode.recommendation.hasConventionalCommits') : null,
+      ].filter(Boolean)
+    : [];
+
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Mode Selection */}
       <div>
         <label className="block text-sm font-medium text-text-primary mb-2">
-          Commit Mode
+          {t('commitMode.label')}
         </label>
         
         {/* Recommendation Banner */}
@@ -100,13 +122,15 @@ export function CommitModeSettings({
             <div className="flex items-start gap-2">
               <Info className="w-4 h-4 text-interactive mt-0.5 flex-shrink-0" />
               <div className="text-sm text-interactive">
-                <p className="font-medium">Recommended: {characteristics.suggestedMode} mode</p>
+                <p className="font-medium">
+                  {interpolateTranslation(t('commitMode.recommendation.title'), {
+                    mode: getModeLabel(characteristics.suggestedMode)
+                  })}
+                </p>
                 <p className="text-xs mt-1 opacity-90">
-                  {characteristics.hasHusky && 'Pre-commit hooks detected (.husky). '}
-                  {characteristics.hasChangeset && 'Changesets detected. '}
-                  {characteristics.hasConventionalCommits && 'Conventional commits detected. '}
-                  {!characteristics.hasHusky && !characteristics.hasChangeset && !characteristics.hasConventionalCommits && 
-                    'No special commit requirements detected. '}
+                  {recommendationDetails.length > 0
+                    ? recommendationDetails.join(' ')
+                    : t('commitMode.recommendation.none')}
                 </p>
               </div>
             </div>
@@ -138,15 +162,15 @@ export function CommitModeSettings({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4 text-interactive" />
-                  <span className="font-medium text-text-primary">Structured Mode</span>
+                  <span className="font-medium text-text-primary">{t('commitMode.mode.structured')}</span>
                   {characteristics?.suggestedMode === 'structured' && (
                     <Badge variant="primary" size="sm">
-                      Recommended
+                      {t('commitMode.recommendation.badge')}
                     </Badge>
                   )}
                 </div>
                 <p className="text-sm text-text-secondary mt-1">
-                  Claude creates commits with proper messages. Respects pre-commit hooks and project conventions.
+                  {t('commitMode.mode.structuredDescription')}
                 </p>
               </div>
             </label>
@@ -176,15 +200,15 @@ export function CommitModeSettings({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-status-success" />
-                  <span className="font-medium text-text-primary">Checkpoint Mode</span>
+                  <span className="font-medium text-text-primary">{t('commitMode.mode.checkpoint')}</span>
                   {characteristics?.suggestedMode === 'checkpoint' && (
                     <Badge variant="success" size="sm">
-                      Recommended
+                      {t('commitMode.recommendation.badge')}
                     </Badge>
                   )}
                 </div>
                 <p className="text-sm text-text-secondary mt-1">
-                  Auto-commit after each prompt. Fast and simple, bypasses hooks with --no-verify.
+                  {t('commitMode.mode.checkpointDescription')}
                 </p>
               </div>
             </label>
@@ -214,10 +238,10 @@ export function CommitModeSettings({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <GitCommit className="w-4 h-4 text-text-muted" />
-                  <span className="font-medium text-text-primary">Disabled Mode</span>
+                  <span className="font-medium text-text-primary">{t('commitMode.mode.disabled')}</span>
                 </div>
                 <p className="text-sm text-text-secondary mt-1">
-                  No auto-commits. You handle all commits manually.
+                  {t('commitMode.mode.disabledDescription')}
                 </p>
               </div>
             </label>
@@ -231,10 +255,9 @@ export function CommitModeSettings({
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-status-warning mt-0.5 flex-shrink-0" />
             <div className="text-sm text-status-warning">
-              <p className="font-medium">Warning: Pre-commit hooks detected</p>
+              <p className="font-medium">{t('commitMode.warning.title')}</p>
               <p className="text-xs mt-1 opacity-90">
-                Checkpoint commits will bypass pre-commit hooks. This may cause CI failures.
-                Consider using Structured mode for this project.
+                {t('commitMode.warning.body')}
               </p>
             </div>
           </div>
@@ -245,18 +268,18 @@ export function CommitModeSettings({
       {localSettings.mode === 'structured' && (
         <div className="space-y-3 pt-2">
           <Textarea
-            label="Commit Prompt Template"
+            label={t('commitMode.structured.templateLabel')}
             value={localSettings.structuredPromptTemplate || DEFAULT_STRUCTURED_PROMPT_TEMPLATE}
             onChange={(e) => handleSettingChange('structuredPromptTemplate', e.target.value)}
             rows={4}
-            placeholder="Instructions for Claude on how to commit..."
-            helperText="This will be appended to Claude's prompts to guide commit behavior."
+            placeholder={t('commitMode.structured.templatePlaceholder')}
+            helperText={t('commitMode.structured.templateHelper')}
             fullWidth
           />
 
           <Checkbox
             id="allowClaudeTools"
-            label="Allow Claude to run tools (e.g., pnpm changeset)"
+            label={t('commitMode.structured.allowTools')}
             checked={localSettings.allowClaudeTools || false}
             onChange={(e) => handleSettingChange('allowClaudeTools', e.target.checked)}
           />
@@ -266,11 +289,11 @@ export function CommitModeSettings({
       {localSettings.mode === 'checkpoint' && (
         <div className="pt-2">
           <Input
-            label="Commit Prefix"
+            label={t('commitMode.checkpoint.prefixLabel')}
             value={localSettings.checkpointPrefix || DEFAULT_COMMIT_MODE_SETTINGS.checkpointPrefix}
             onChange={(e) => handleSettingChange('checkpointPrefix', e.target.value)}
             placeholder="checkpoint: "
-            helperText="Prefix for automatic checkpoint commits."
+            helperText={t('commitMode.checkpoint.prefixHelper')}
             fullWidth
           />
         </div>

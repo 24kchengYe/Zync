@@ -169,6 +169,26 @@ export class PanelManager {
       });
     }
   }
+
+  async ensureDashboardPanel(sessionId: string): Promise<void> {
+    const panels = this.getPanelsForSession(sessionId);
+    const hasDashboard = panels.some(p => p.type === 'dashboard');
+
+    if (!hasDashboard) {
+      console.log(`[PanelManager] Creating dashboard panel for session ${sessionId}`);
+      const currentActivePanel = databaseService.getActivePanel(sessionId);
+      await this.createPanel({
+        sessionId,
+        type: 'dashboard',
+        title: 'Status Panel',
+        metadata: { permanent: true }
+      });
+
+      if (currentActivePanel) {
+        await this.setActivePanel(sessionId, currentActivePanel.id);
+      }
+    }
+  }
   
   async deletePanel(panelId: string): Promise<void> {
     return await withLock(`panel-delete-${panelId}`, async () => {

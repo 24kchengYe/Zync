@@ -19,6 +19,8 @@ import { useNavigationStore } from '../stores/navigationStore';
 import { API } from '../utils/api';
 import type { Project } from '../types/project';
 import type { Session } from '../types/session';
+import { getWorkspaceCountLabel, useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { SidebarProjectSearchPanel } from '../../../UpdateWuruize/frontend/ProjectEntryWidgets';
 
 // --- Collapsed sidebar tooltip content ---
 
@@ -34,13 +36,13 @@ function formatTimeAgo(iso: string): string {
 }
 
 function CollapsedProjectTooltip({ project, sessionCount }: { project: Project; sessionCount: number }) {
+  const { t } = useI18n();
+
   return (
     <div className="max-w-xs space-y-1">
       <p className="text-[11px] text-text-primary font-medium">{project.name}</p>
       <p className="text-[10px] text-text-tertiary font-mono break-all">{project.path}</p>
-      <p className="text-[10px] text-text-tertiary">
-        {sessionCount} {sessionCount === 1 ? 'workspace' : 'workspaces'}
-      </p>
+      <p className="text-[10px] text-text-tertiary">{getWorkspaceCountLabel(sessionCount, t)}</p>
     </div>
   );
 }
@@ -183,6 +185,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettingsOpen, onSettingsClose, settingsInitialSection, width, onResize, collapsed, onToggleCollapse }: SidebarProps) {
+  const { t } = useI18n();
   const paneLogo = usePaneLogo();
   const hotkeys = useHotkeyStore((s) => s.hotkeys);
   const hotkeyDisplay = useCallback((id: string) => {
@@ -196,6 +199,10 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
   const [sessionSortAscending, setSessionSortAscending] = useState<boolean>(true); // Default to ascending (newest at bottom)
 
   useEffect(() => {
+    if (!window.electronAPI?.getVersionInfo || !window.electronAPI?.uiState?.getExpanded) {
+      return;
+    }
+
     // Fetch version info and UI state on component mount
     const fetchVersion = async () => {
       try {
@@ -363,7 +370,7 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
               <button
                 onClick={() => setShowCreateDialog(true)}
                 className="w-8 h-8 rounded flex items-center justify-center text-text-tertiary hover:bg-surface-hover hover:text-interactive transition-colors"
-                title="New Workspace"
+                title={t('sidebar.newWorkspace')}
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -375,7 +382,7 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
             <Tooltip content={hotkeyDisplay('open-settings') ? <Kbd>{hotkeyDisplay('open-settings')}</Kbd> : undefined} side="right">
               <IconButton
                 onClick={onSettingsClick}
-                aria-label="Settings"
+                aria-label={t('sidebar.settings')}
                 size="sm"
                 icon={<SettingsIcon className="w-4 h-4" />}
               />
@@ -383,7 +390,7 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
             <Tooltip content={hotkeyDisplay('toggle-sidebar') ? <Kbd>{hotkeyDisplay('toggle-sidebar')}</Kbd> : undefined} side="right">
               <IconButton
                 onClick={onToggleCollapse}
-                aria-label="Expand sidebar"
+                aria-label={t('sidebar.expandSidebar')}
                 size="sm"
                 icon={<PanelLeftOpen className="w-4 h-4" />}
               />
@@ -443,7 +450,7 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
               <Tooltip content={hotkeyDisplay('toggle-sidebar') ? <Kbd>{hotkeyDisplay('toggle-sidebar')}</Kbd> : undefined} side="bottom">
                 <IconButton
                   onClick={onToggleCollapse}
-                  aria-label="Collapse sidebar"
+                  aria-label={t('sidebar.collapseSidebar')}
                   size="md"
                   icon={<PanelLeftClose className="w-5 h-5" />}
                 />
@@ -451,7 +458,7 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
             )}
             <IconButton
               onClick={onHelpClick}
-              aria-label="Help"
+              aria-label={t('sidebar.help')}
               size="md"
               icon={
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -462,7 +469,7 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
             <Tooltip content={hotkeyDisplay('open-settings') ? <Kbd>{hotkeyDisplay('open-settings')}</Kbd> : undefined} side="bottom">
               <IconButton
                 onClick={onSettingsClick}
-                aria-label="Settings"
+                aria-label={t('sidebar.settings')}
                 data-testid="settings-button"
                 size="md"
                 icon={
@@ -490,19 +497,19 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
                 items={[
                   {
                     id: 'sort',
-                    label: sessionSortAscending ? 'Sort: Oldest first' : 'Sort: Newest first',
+                    label: sessionSortAscending ? t('sidebar.sortOldestFirst') : t('sidebar.sortNewestFirst'),
                     icon: ArrowUpDown,
                     onClick: toggleSessionSortOrder
                   },
                   {
                     id: 'legend',
-                    label: 'Status legend',
+                    label: t('sidebar.statusLegend'),
                     icon: Info,
                     onClick: () => setShowStatusGuide(true)
                   },
                   {
                     id: 'refresh',
-                    label: 'Refresh git status',
+                    label: t('sidebar.refreshGitStatus'),
                     icon: RefreshCw,
                     onClick: handleRefreshGitStatus
                   }
@@ -512,6 +519,7 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
               />
             </div>
           </div>
+          <SidebarProjectSearchPanel />
           <ProjectSessionList sessionSortAscending={sessionSortAscending} />
         </div>
 
@@ -531,7 +539,7 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
               <div
                 className="text-xs text-text-tertiary text-center cursor-pointer hover:text-text-secondary transition-colors truncate"
                 onClick={onAboutClick}
-                title="Click to view version details"
+                title={t('common.versionDetails')}
               >
                 v{version}{worktreeName && ` • ${worktreeName}`}{gitCommit && ` • ${gitCommit}`}
               </div>
@@ -548,7 +556,7 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
         onClose={() => setShowStatusGuide(false)}
         size="lg"
       >
-        <ModalHeader>Status Indicators Guide</ModalHeader>
+        <ModalHeader>{t('sidebar.statusIndicatorsGuide')}</ModalHeader>
         <ModalBody>
             
             <div className="space-y-4">

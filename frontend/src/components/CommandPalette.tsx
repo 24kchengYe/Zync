@@ -3,8 +3,9 @@ import { Search } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Input } from './ui/Input';
 import { useHotkeyStore, type HotkeyDefinition } from '../stores/hotkeyStore';
-import { formatKeyDisplay, CATEGORY_LABELS, CATEGORY_ORDER } from '../utils/hotkeyUtils';
+import { formatKeyDisplay, CATEGORY_ORDER, getHotkeyCategoryLabel } from '../utils/hotkeyUtils';
 import { Kbd } from './ui/Kbd';
+import { useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ type ListItem =
   | { type: 'command'; hotkey: HotkeyDefinition; flatIndex: number };
 
 export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
+  const { t } = useI18n();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -24,7 +26,6 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const getAll = useHotkeyStore((s) => s.getAll);
   const search = useHotkeyStore((s) => s.search);
 
-  // Get filtered results — exclude the command palette's own hotkey, disabled hotkeys, and showInPalette: false
   const results = (searchTerm
     ? search(searchTerm, { paletteOnly: true })
     : getAll({ paletteOnly: true })
@@ -32,22 +33,18 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
 
   const { listItems, commandCount } = buildListItems(results);
 
-  // Reset state when opening
   useEffect(() => {
     if (isOpen) {
       setSearchTerm('');
       setSelectedIndex(0);
-      // Focus input after modal animation
       setTimeout(() => inputRef.current?.focus(), 60);
     }
   }, [isOpen]);
 
-  // Reset selection when search changes
   useEffect(() => {
     setSelectedIndex(0);
   }, [searchTerm]);
 
-  // Scroll selected item into view
   useEffect(() => {
     const selectedEl = listRef.current?.querySelector('[data-selected="true"]');
     selectedEl?.scrollIntoView({ block: 'nearest' });
@@ -55,7 +52,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
 
   const executeSelected = useCallback(() => {
     const commandItems = listItems.filter(
-      (item): item is Extract<ListItem, { type: 'command' }> => item.type === 'command'
+      (item): item is Extract<ListItem, { type: 'command' }> => item.type === 'command',
     );
     const selected = commandItems[selectedIndex];
     if (selected) {
@@ -89,7 +86,6 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       showCloseButton={false}
       className="!max-h-[min(500px,80vh)]"
     >
-      {/* Search input */}
       <div className="p-3 border-b border-border-primary">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -98,7 +94,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           <Input
             ref={inputRef}
             type="text"
-            placeholder="Search commands..."
+            placeholder={t('commandPalette.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -107,11 +103,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         </div>
       </div>
 
-      {/* Results list */}
       <div ref={listRef} className="overflow-y-auto py-2" style={{ maxHeight: '380px' }}>
         {commandCount === 0 ? (
           <div className="px-4 py-8 text-center text-text-tertiary text-sm">
-            No commands found
+            {t('commandPalette.noCommandsFound')}
           </div>
         ) : (
           listItems.map((item) => {
@@ -121,10 +116,11 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                   key={`header-${item.category}`}
                   className="px-4 pt-3 pb-1 text-xs font-medium text-text-tertiary uppercase tracking-wider"
                 >
-                  {CATEGORY_LABELS[item.category as HotkeyDefinition['category']] ?? item.category}
+                  {getHotkeyCategoryLabel(item.category as HotkeyDefinition['category'], t)}
                 </div>
               );
             }
+
             const isSelected = item.flatIndex === selectedIndex;
             return (
               <button
@@ -154,11 +150,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         )}
       </div>
 
-      {/* Footer hint */}
       <div className="px-4 py-2 border-t border-border-primary flex items-center gap-4 text-xs text-text-muted">
-        <span><Kbd size="xs">↑↓</Kbd> navigate</span>
-        <span><Kbd size="xs">↵</Kbd> execute</span>
-        <span><Kbd size="xs">esc</Kbd> close</span>
+        <span><Kbd size="xs">Up/Down</Kbd> {t('commandPalette.footer.navigate')}</span>
+        <span><Kbd size="xs">Enter</Kbd> {t('commandPalette.footer.execute')}</span>
+        <span><Kbd size="xs">Esc</Kbd> {t('commandPalette.footer.close')}</span>
       </div>
     </Modal>
   );

@@ -3,6 +3,7 @@ import { PanelContainerProps } from '../../types/panelComponents';
 import { ErrorBoundary } from 'react-error-boundary';
 import { PanelLoadingFallback } from './PanelLoadingFallback';
 import { renderLog } from '../../utils/console';
+import { interpolateTranslation, useI18n } from '../../../../UpdateWuruize/frontend/I18nContext';
 
 // Lazy load panel components for better performance
 const TerminalPanel = lazy(() => import('./TerminalPanel'));
@@ -33,6 +34,7 @@ export const PanelContainer: React.FC<PanelContainerProps> = React.memo(({
   isActive,
   isMainRepo = false
 }) => {
+  const { t } = useI18n();
   renderLog('[PanelContainer] Rendering panel:', panel.id, 'Type:', panel.type, 'Active:', isActive);
   
   // FIX: Use stable panel rendering without forcing remounts
@@ -61,13 +63,13 @@ export const PanelContainer: React.FC<PanelContainerProps> = React.memo(({
           <div className="h-full w-full flex items-center justify-center p-8">
             <div className="text-center max-w-md">
               <h3 className="text-lg font-medium text-text-primary mb-2">
-                Unknown Panel Type
+                {t('panelContainer.unknownPanelType')}
               </h3>
               <p className="text-sm text-text-secondary">
-                Panel type "{panel.type}" is not recognized.
+                {interpolateTranslation(t('panelContainer.panelTypeNotRecognized'), { type: panel.type })}
               </p>
               <p className="text-xs text-text-tertiary mt-2">
-                Panel ID: {panel.id}
+                {interpolateTranslation(t('panelContainer.panelId'), { id: panel.id })}
               </p>
             </div>
           </div>
@@ -83,7 +85,7 @@ export const PanelContainer: React.FC<PanelContainerProps> = React.memo(({
       <Suspense fallback={
         <PanelLoadingFallback 
           panelType={panel.type}
-          message={`Loading ${panel.type} panel...`}
+          message={interpolateTranslation(t('panelContainer.loadingPanel'), { type: panel.type })}
         />
       }>
         {panelComponent}

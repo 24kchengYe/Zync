@@ -226,14 +226,16 @@ export function useNotifications() {
   useEffect(() => {
     if (!settingsLoaded.current) {
       settingsLoaded.current = true;
-      
-      API.config.get().then(response => {
-        if (response.success && response.data?.notifications) {
-          setSettings(response.data.notifications);
-        }
-      }).catch(error => {
-        console.error('Failed to load notification settings:', error);
-      });
+
+      if (window.electronAPI) {
+        API.config.get().then(response => {
+          if (response.success && response.data?.notifications) {
+            setSettings(response.data.notifications);
+          }
+        }).catch(error => {
+          console.error('Failed to load notification settings:', error);
+        });
+      }
       
       requestPermission();
     }
