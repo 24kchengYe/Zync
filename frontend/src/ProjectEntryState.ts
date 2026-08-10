@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import type { Project } from '../../frontend/src/types/project';
-import type { Session } from '../../frontend/src/types/session';
-import { useSessionStore } from '../../frontend/src/stores/sessionStore';
-import { useNavigationStore } from '../../frontend/src/stores/navigationStore';
-import { API } from '../../frontend/src/utils/api';
+import type { Project } from './types/project';
+import type { Session } from './types/session';
+import { useSessionStore } from './stores/sessionStore';
+import { useNavigationStore } from './stores/navigationStore';
+import { API } from './utils/api';
 
 export type StartupEntryMode = 'home' | 'default-project' | 'default-workspace';
 export type ProjectFilter = 'all' | 'recent' | 'favorites' | 'bookmarks';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ProjectDashboard } from '../ProjectDashboard';
 import { useSession } from '../../contexts/SessionContext';
-import { useI18n } from '../../../../UpdateWuruize/frontend/I18nContext';
+import { useI18n } from '../../I18nContext';
 
 interface DashboardPanelProps {
   panelId: string;

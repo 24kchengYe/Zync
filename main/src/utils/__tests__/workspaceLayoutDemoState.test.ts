@@ -7,7 +7,7 @@ import {
   normalizeWorkspaceLayoutDemoState,
   saveWorkspaceLayoutDemoState,
   type WorkspaceLayoutDemoState,
-} from '../../../../UpdateWuruize/frontend/WorkspaceLayoutDemoState';
+} from '../../../../frontend/src/WorkspaceLayoutDemoState';
 
 function createPanel(
   overrides: Partial<ToolPanel> & Pick<ToolPanel, 'id' | 'sessionId' | 'type' | 'title'>,

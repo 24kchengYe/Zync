@@ -4,7 +4,7 @@ import { ToggleField } from './ui/Toggle';
 import { CollapsibleCard } from './ui/CollapsibleCard';
 import { SettingsSection } from './ui/SettingsSection';
 import { Bell, BellOff, Volume2, VolumeX, Zap, Shield } from 'lucide-react';
-import { useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { useI18n } from '../I18nContext';
 
 interface NotificationSettings {
   enabled: boolean;

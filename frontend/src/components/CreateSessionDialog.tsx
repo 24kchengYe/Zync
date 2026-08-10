@@ -18,13 +18,13 @@ import { useSessionPreferencesStore, type SessionCreationPreferences } from '../
 import { useSessionStore } from '../stores/sessionStore';
 import { useNavigationStore } from '../stores/navigationStore';
 import { dashboardCache } from '../utils/dashboardCache';
-import { interpolateTranslation, useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { interpolateTranslation, useI18n } from '../I18nContext';
 import {
   buildProjectInitHooksPreview,
   loadProjectInitHooksDemoConfig,
   type InitHookPanelKey,
   type ProjectInitHooksPreview,
-} from '../../../UpdateWuruize/frontend/ProjectInitHooksDemoState';
+} from '../ProjectInitHooksDemoState';
 
 // Interface for branch information
 interface BranchInfo {

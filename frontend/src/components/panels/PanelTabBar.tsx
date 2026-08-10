@@ -13,8 +13,8 @@ import { useHotkeyStore } from '../../stores/hotkeyStore';
 import { Tooltip } from '../ui/Tooltip';
 import { Kbd } from '../ui/Kbd';
 import { useResourceMonitor } from '../../hooks/useResourceMonitor';
-import { interpolateTranslation, useI18n } from '../../../../UpdateWuruize/frontend/I18nContext';
-import type { WorkspaceLayoutMode } from '../../../../UpdateWuruize/frontend/WorkspaceLayoutDemoState';
+import { interpolateTranslation, useI18n } from '../../I18nContext';
+import type { WorkspaceLayoutMode } from '../../WorkspaceLayoutDemoState';
 
 function formatMemory(mb: number): string {
   if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;

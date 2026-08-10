@@ -9,16 +9,16 @@ import {
   getSessionStatusLabel,
   interpolateTranslation,
   useI18n,
-} from '../../../../UpdateWuruize/frontend/I18nContext';
+} from '../../I18nContext';
 import {
   deriveProjectActivityStreamViews,
   type ProjectActivityStreamView,
   type ProjectActivitySummaryCard,
-} from '../../../../UpdateWuruize/frontend/ProjectActivityStreamViewState';
+} from '../../ProjectActivityStreamViewState';
 import {
   getActivityAgentLabel,
   getLatestSessionSummary,
-} from '../../../../UpdateWuruize/frontend/WorkspaceDashboardDetailState';
+} from '../../WorkspaceDashboardDetailState';
 import {
   HEARTBEAT_INTERVAL_MS,
   getProjectActivityStreamStorageKey,
@@ -27,7 +27,7 @@ import {
   type ProjectActivityStreamEntry,
   type ProjectActivityStreamState,
   type ProjectActivityWorkspaceState,
-} from '../../../../UpdateWuruize/frontend/ProjectActivityStreamDemoState';
+} from '../../ProjectActivityStreamDemoState';
 
 type Language = ReturnType<typeof useI18n>['language'];
 type Translator = ReturnType<typeof useI18n>['t'];

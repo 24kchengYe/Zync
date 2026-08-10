@@ -8,7 +8,7 @@ import {
   loadWorkspaceSnapshots,
   type CreateWorkspaceSnapshotInput,
   type WorkspaceSnapshotRecord,
-} from '../../../../UpdateWuruize/frontend/WorkspaceSnapshotDemoState';
+} from '../../../../frontend/src/WorkspaceSnapshotDemoState';
 
 function createPanel(overrides: Partial<ToolPanel> & Pick<ToolPanel, 'id' | 'sessionId' | 'type' | 'title'>): ToolPanel {
   return {

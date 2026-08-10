@@ -18,13 +18,13 @@ import { Dropdown, DropdownMenuItem } from './ui/Dropdown';
 import { GitHistoryGraph } from './GitHistoryGraph';
 import { panelApi } from '../services/panelApi';
 import { usePanelStore } from '../stores/panelStore';
-import { interpolateTranslation, useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { interpolateTranslation, useI18n } from '../I18nContext';
 import {
   DEFAULT_WORKSPACE_LAYOUT_DEMO_STATE,
   getWorkspacePersistenceKey,
   type WorkspaceLayoutDemoState,
-} from '../../../UpdateWuruize/frontend/WorkspaceLayoutDemoState';
-import { WorkspaceSnapshotDialog } from '../../../UpdateWuruize/frontend/WorkspaceSnapshotDialog';
+} from '../WorkspaceLayoutDemoState';
+import { WorkspaceSnapshotDialog } from '../WorkspaceSnapshotDialog';
 import {
   buildWorkspaceSnapshotRestorePreview,
   createAndStoreWorkspaceSnapshot,
@@ -32,7 +32,7 @@ import {
   isWorkspaceSnapshotSupportedPanelType,
   loadWorkspaceSnapshots,
   type WorkspaceSnapshotRecord,
-} from '../../../UpdateWuruize/frontend/WorkspaceSnapshotDemoState';
+} from '../WorkspaceSnapshotDemoState';
 
 interface DetailPanelProps {
   isVisible: boolean;

@@ -47,7 +47,7 @@ import {
   interpolateTranslation,
   type Language,
   useI18n,
-} from '../../../UpdateWuruize/frontend/I18nContext';
+} from '../I18nContext';
 
 function getFallbackPlatform(): string {
   if (typeof navigator === 'undefined') {

@@ -5,7 +5,7 @@ import {
   type ProjectActivityStreamEntry,
   type ProjectActivityStreamState,
   type ProjectActivityWorkspaceState,
-} from '../../../../UpdateWuruize/frontend/ProjectActivityStreamDemoState';
+} from '../../../../frontend/src/ProjectActivityStreamDemoState';
 
 const localStorageMock = (() => {
   let store = new Map<string, string>();

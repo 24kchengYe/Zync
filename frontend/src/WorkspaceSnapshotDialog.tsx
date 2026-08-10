@@ -7,16 +7,16 @@ import {
   RotateCcw,
   Trash2,
 } from 'lucide-react';
-import { Badge } from '../../frontend/src/components/ui/Badge';
-import { Button } from '../../frontend/src/components/ui/Button';
-import { Input } from '../../frontend/src/components/ui/Input';
+import { Badge } from './components/ui/Badge';
+import { Button } from './components/ui/Button';
+import { Input } from './components/ui/Input';
 import {
   Modal,
   ModalBody,
   ModalFooter,
   ModalHeader,
-} from '../../frontend/src/components/ui/Modal';
-import { cn } from '../../frontend/src/utils/cn';
+} from './components/ui/Modal';
+import { cn } from './utils/cn';
 import { interpolateTranslation, useI18n } from './I18nContext';
 import type { WorkspaceLayoutDemoState } from './WorkspaceLayoutDemoState';
 import type {

@@ -1,5 +1,5 @@
 import { ToolPanel, ToolPanelType } from '../../../shared/types/panels';
-import type { WorkspaceLayoutMode } from '../../../UpdateWuruize/frontend/WorkspaceLayoutDemoState';
+import type { WorkspaceLayoutMode } from '../WorkspaceLayoutDemoState';
 
 export type PanelContext = 'project' | 'worktree';
 

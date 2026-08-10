@@ -1,7 +1,7 @@
 import React from 'react';
 import { Check, Edit, CircleArrowDown, AlertTriangle, HelpCircle, GitMerge, Loader2 } from 'lucide-react';
 import type { GitStatus } from '../types/session';
-import { useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { useI18n } from '../I18nContext';
 
 interface GitStatusIndicatorProps {
   gitStatus?: GitStatus;

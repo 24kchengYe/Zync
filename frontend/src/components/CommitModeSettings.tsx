@@ -8,7 +8,7 @@ import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
 import { Checkbox } from './ui/Input';
 import { cn } from '../utils/cn';
-import { interpolateTranslation, useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { interpolateTranslation, useI18n } from '../I18nContext';
 
 interface CommitModeSettingsProps {
   projectId?: number;

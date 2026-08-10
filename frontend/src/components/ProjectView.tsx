@@ -11,8 +11,8 @@ import { PanelCreateOptions } from '../types/panelComponents';
 import { SessionProvider } from '../contexts/SessionContext';
 import { DetailPanel } from './DetailPanel';
 import { useResizable } from '../hooks/useResizable';
-import { ProjectContextBanner } from '../../../UpdateWuruize/frontend/ProjectContextBanner';
-import { useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { ProjectContextBanner } from '../ProjectContextBanner';
+import { useI18n } from '../I18nContext';
 import { useNavigationStore } from '../stores/navigationStore';
 
 interface ProjectViewProps {

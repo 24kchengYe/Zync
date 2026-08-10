@@ -5,7 +5,7 @@ import { Input } from './ui/Input';
 import { useHotkeyStore, type HotkeyDefinition } from '../stores/hotkeyStore';
 import { formatKeyDisplay, CATEGORY_ORDER, getHotkeyCategoryLabel } from '../utils/hotkeyUtils';
 import { Kbd } from './ui/Kbd';
-import { useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { useI18n } from '../I18nContext';
 
 interface CommandPaletteProps {
   isOpen: boolean;

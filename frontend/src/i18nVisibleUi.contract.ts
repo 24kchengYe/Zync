@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../../UpdateWuruize/frontend/i18n';
+import type { TranslationKey } from './i18n';
 
 const visibleUiTranslationContract: TranslationKey[] = [
   'common.close',

@@ -5,14 +5,11 @@ import {
   interpolateTranslation,
   useI18n,
   type Language,
-} from '../../../UpdateWuruize/frontend/I18nContext';
-import { resolveSelectedWorkspaceId } from '../../../UpdateWuruize/frontend/WorkspaceDashboardDetailState';
+} from '../I18nContext';
+import { resolveSelectedWorkspaceId } from '../WorkspaceDashboardDetailState';
 import { useNavigationStore } from '../stores/navigationStore';
 import { useSessionStore } from '../stores/sessionStore';
 import type {
-  BatchActionType,
-  BatchControlResult,
-  BatchControlRun,
   MainBranchStatus,
   ProjectDashboardData,
   SessionBranchInfo,
@@ -22,7 +19,6 @@ import { dashboardCache } from '../utils/dashboardCache';
 import { debounce } from '../utils/debounce';
 import { formatFullDateTime } from '../utils/timestampUtils';
 import { API } from '../utils/api';
-import { BatchActionModal } from './dashboard/BatchActionModal';
 import { BatchControlToolbar } from './dashboard/BatchControlToolbar';
 import { MultiOriginStatus } from './dashboard/MultiOriginStatus';
 import { ProjectActivityStreamCard } from './dashboard/ProjectActivityStreamCard';
@@ -253,10 +249,6 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = React.memo(({ p
   const [isBatchMode, setIsBatchMode] = useState(true);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const [selectedWorkspaceIds, setSelectedWorkspaceIds] = useState<string[]>([]);
-  const [activeBatchAction, setActiveBatchAction] = useState<BatchActionType | null>(null);
-  const [batchTestCommand, setBatchTestCommand] = useState('pnpm test');
-  const [batchSnapshotNote, setBatchSnapshotNote] = useState('checkpoint: status panel prototype');
-  const [lastBatchRun, setLastBatchRun] = useState<BatchControlRun | null>(null);
   const [isProgressive] = useState(true);
   const dashboardDataRef = useRef<ProjectDashboardData | null>(null);
   const pendingSessionUpdatesRef = useRef<Map<string, SessionBranchInfo>>(new Map());
@@ -398,8 +390,6 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = React.memo(({ p
     setIsBatchMode(true);
     setSelectedWorkspaceId(null);
     setSelectedWorkspaceIds([]);
-    setActiveBatchAction(null);
-    setLastBatchRun(null);
     setDidAutoResetBatchFilter(false);
     fetchDashboardData();
   }, [fetchDashboardData, projectId]);
@@ -628,7 +618,6 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = React.memo(({ p
     batchModeFilterRef.current = filterType;
     setIsBatchMode(true);
     setSelectedWorkspaceIds([]);
-    setActiveBatchAction(null);
 
     if (workspaceRows.length > 0 && filteredWorkspaceRows.length === 0 && filterType !== 'all') {
       setFilterType('all');
@@ -642,7 +631,6 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = React.memo(({ p
   const exitBatchMode = useCallback(() => {
     setIsBatchMode(false);
     setSelectedWorkspaceIds([]);
-    setActiveBatchAction(null);
     if (didAutoResetBatchFilter) {
       setFilterType(batchModeFilterRef.current);
     }
@@ -725,14 +713,6 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = React.memo(({ p
     );
   }, [replaceWorkspaceSelection, workspaceRows]);
 
-  const startBatchAction = useCallback((action: BatchActionType) => {
-    setActiveBatchAction(action);
-  }, []);
-
-  const clearLastBatchRun = useCallback(() => {
-    setLastBatchRun(null);
-  }, []);
-
   const openWorkspaceFromDashboard = useCallback(async (sessionId: string) => {
     try {
       await useSessionStore.getState().setActiveSession(sessionId);
@@ -741,112 +721,6 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = React.memo(({ p
       console.error('[ProjectDashboard] Failed to open workspace from dashboard:', sessionError);
     }
   }, []);
-
-  const buildBatchControlResult = useCallback(
-    (workspace: WorkspaceStatusRow, action: BatchActionType): BatchControlResult => {
-      switch (action) {
-        case 'stop':
-          if (workspace.runtimeStatus === 'stopped' || workspace.runtimeStatus === 'unknown') {
-            return {
-              sessionId: workspace.sessionId,
-              workspaceLabel: workspace.workspaceLabel,
-              status: 'skipped',
-              detail: t('dashboard.batch.results.detail.stopSkipped'),
-            };
-          }
-
-          return {
-            sessionId: workspace.sessionId,
-            workspaceLabel: workspace.workspaceLabel,
-            status: 'success',
-            detail: t('dashboard.batch.results.detail.stopSuccess'),
-          };
-        case 'git-status':
-          if (workspace.runtimeStatus === 'running' || workspace.runtimeStatus === 'initializing') {
-            return {
-              sessionId: workspace.sessionId,
-              workspaceLabel: workspace.workspaceLabel,
-              status: 'queued',
-              detail: t('dashboard.batch.results.detail.gitStatusQueued'),
-            };
-          }
-
-          return {
-            sessionId: workspace.sessionId,
-            workspaceLabel: workspace.workspaceLabel,
-            status: 'success',
-            detail: t('dashboard.batch.results.detail.gitStatusSuccess'),
-          };
-        case 'run-tests':
-          if (workspace.runtimeStatus === 'error') {
-            return {
-              sessionId: workspace.sessionId,
-              workspaceLabel: workspace.workspaceLabel,
-              status: 'failed',
-              detail: t('dashboard.batch.results.detail.runTestsBlocked'),
-            };
-          }
-
-          if (workspace.runtimeStatus === 'running' || workspace.runtimeStatus === 'initializing') {
-            return {
-              sessionId: workspace.sessionId,
-              workspaceLabel: workspace.workspaceLabel,
-              status: 'queued',
-              detail: interpolateTranslation(t('dashboard.batch.results.detail.runTestsQueued'), {
-                command: batchTestCommand,
-              }),
-            };
-          }
-
-          return {
-            sessionId: workspace.sessionId,
-            workspaceLabel: workspace.workspaceLabel,
-            status: 'success',
-            detail: interpolateTranslation(t('dashboard.batch.results.detail.runTestsSuccess'), {
-              command: batchTestCommand,
-            }),
-          };
-        case 'save-snapshot':
-        default:
-          if (!workspace.hasUncommittedChanges) {
-            return {
-              sessionId: workspace.sessionId,
-              workspaceLabel: workspace.workspaceLabel,
-              status: 'skipped',
-              detail: t('dashboard.batch.results.detail.snapshotSkipped'),
-            };
-          }
-
-          return {
-            sessionId: workspace.sessionId,
-            workspaceLabel: workspace.workspaceLabel,
-            status: 'success',
-            detail: interpolateTranslation(t('dashboard.batch.results.detail.snapshotSuccess'), {
-              note: batchSnapshotNote,
-            }),
-          };
-      }
-    },
-    [batchSnapshotNote, batchTestCommand, t],
-  );
-
-  const handleConfirmBatchAction = useCallback(() => {
-    if (!activeBatchAction || selectedWorkspaceRows.length === 0) {
-      return;
-    }
-
-    const results = selectedWorkspaceRows.map(workspace => buildBatchControlResult(workspace, activeBatchAction));
-
-    setLastBatchRun({
-      action: activeBatchAction,
-      createdAt: new Date().toISOString(),
-      targetedCount: selectedWorkspaceRows.length,
-      command: activeBatchAction === 'run-tests' ? batchTestCommand : undefined,
-      note: activeBatchAction === 'save-snapshot' ? batchSnapshotNote : undefined,
-      results,
-    });
-    setActiveBatchAction(null);
-  }, [activeBatchAction, batchSnapshotNote, batchTestCommand, buildBatchControlResult, selectedWorkspaceRows]);
 
   const renderWorkspaceRow = useCallback(
     (workspace: WorkspaceStatusRow) => {
@@ -1278,15 +1152,12 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = React.memo(({ p
                     isBatchMode={isBatchMode}
                     selectedCount={selectedWorkspaceRows.length}
                     didAutoResetFilter={didAutoResetBatchFilter}
-                    lastRun={lastBatchRun}
                     onSelectFiltered={selectFilteredWorkspaces}
                     onSelectRunning={selectRunningWorkspaces}
                     onSelectWaiting={selectWaitingWorkspaces}
                     onSelectChanges={selectChangedWorkspaces}
                     onSelectFailed={selectFailedWorkspaces}
                     onClearSelection={() => setSelectedWorkspaceIds([])}
-                    onStartAction={startBatchAction}
-                    onClearLastRun={clearLastBatchRun}
                   />
                 )}
 
@@ -1303,22 +1174,6 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = React.memo(({ p
         </div>
       ) : null}
 
-      <BatchActionModal
-        isOpen={!!activeBatchAction}
-        action={activeBatchAction}
-        workspaces={selectedWorkspaceRows.map(workspace => ({
-          sessionId: workspace.sessionId,
-          workspaceLabel: workspace.workspaceLabel,
-          runtimeStatus: workspace.runtimeStatus,
-          hasUncommittedChanges: workspace.hasUncommittedChanges,
-        }))}
-        testCommand={batchTestCommand}
-        snapshotNote={batchSnapshotNote}
-        onChangeTestCommand={setBatchTestCommand}
-        onChangeSnapshotNote={setBatchSnapshotNote}
-        onClose={() => setActiveBatchAction(null)}
-        onConfirm={handleConfirmBatchAction}
-      />
     </Card>
   );
 });

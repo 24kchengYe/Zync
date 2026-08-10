@@ -19,8 +19,8 @@ import { useNavigationStore } from '../stores/navigationStore';
 import { API } from '../utils/api';
 import type { Project } from '../types/project';
 import type { Session } from '../types/session';
-import { getWorkspaceCountLabel, useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
-import { SidebarProjectSearchPanel } from '../../../UpdateWuruize/frontend/ProjectEntryWidgets';
+import { getWorkspaceCountLabel, useI18n } from '../I18nContext';
+import { SidebarProjectSearchPanel } from '../ProjectEntryWidgets';
 
 // --- Collapsed sidebar tooltip content ---
 

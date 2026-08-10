@@ -1,7 +1,7 @@
 import { Settings, Play, AlertCircle } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from './ui/Modal';
 import { Button } from './ui/Button';
-import { useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { useI18n } from '../I18nContext';
 
 interface RunScriptConfigDialogProps {
   isOpen: boolean;

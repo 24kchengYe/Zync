@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { I18nProvider } from '../../UpdateWuruize/frontend/I18nContext';
+import { I18nProvider } from './I18nContext';
 import './index.css';
 import './styles/markdown-preview.css';
 import './styles/notebook-preview.css';

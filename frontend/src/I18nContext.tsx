@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useConfigStore } from '../../frontend/src/stores/configStore';
-import type { AppConfig } from '../../frontend/src/types/config';
+import { useConfigStore } from './stores/configStore';
+import type { AppConfig } from './types/config';
 import {
   getTranslation,
   isLanguage,

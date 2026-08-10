@@ -10,17 +10,17 @@ import {
   Star,
   Workflow,
 } from 'lucide-react';
-import { Modal } from '../../frontend/src/components/ui/Modal';
-import { Input } from '../../frontend/src/components/ui/Input';
-import { Button } from '../../frontend/src/components/ui/Button';
-import { Kbd } from '../../frontend/src/components/ui/Kbd';
-import { useNavigationStore } from '../../frontend/src/stores/navigationStore';
-import { useSessionHistoryStore } from '../../frontend/src/stores/sessionHistoryStore';
-import { useSessionStore } from '../../frontend/src/stores/sessionStore';
-import { API } from '../../frontend/src/utils/api';
-import { cn } from '../../frontend/src/utils/cn';
-import type { Project } from '../../frontend/src/types/project';
-import type { ClaudeJsonMessage, Session } from '../../frontend/src/types/session';
+import { Modal } from './components/ui/Modal';
+import { Input } from './components/ui/Input';
+import { Button } from './components/ui/Button';
+import { Kbd } from './components/ui/Kbd';
+import { useNavigationStore } from './stores/navigationStore';
+import { useSessionHistoryStore } from './stores/sessionHistoryStore';
+import { useSessionStore } from './stores/sessionStore';
+import { API } from './utils/api';
+import { cn } from './utils/cn';
+import type { Project } from './types/project';
+import type { ClaudeJsonMessage, Session } from './types/session';
 import { getWorkspaceCountLabel, useI18n } from './I18nContext';
 
 interface QuickSwitcherDemoProps {
@@ -101,7 +101,9 @@ function scoreFields(fields: string[], query: string, bonus: number = 0) {
 }
 
 function stripAnsi(value: string) {
-  return value.replace(/\u001b\[[0-9;]*m/g, '');
+  const escapeCharacter = String.fromCharCode(27);
+  const ansiPattern = new RegExp(`${escapeCharacter}\\[[0-9;]*m`, 'g');
+  return value.replace(ansiPattern, '');
 }
 
 function cleanPreviewText(value: string | null | undefined) {

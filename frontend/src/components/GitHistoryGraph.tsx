@@ -3,7 +3,7 @@ import { API } from '../utils/api';
 import { Loader2, GitCommitHorizontal, FileText, Plus, Minus, User, Clock, Hash, GitFork } from 'lucide-react';
 import { Tooltip } from './ui/Tooltip';
 import { CopyableField } from './ui/CopyableField';
-import { interpolateTranslation, useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { interpolateTranslation, useI18n } from '../I18nContext';
 
 interface GitGraphCommitData {
   hash: string;

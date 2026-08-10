@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertCircle, ArrowRight, CheckCircle, Clock, GitBranch, GitFork } from 'lucide-react';
 import type { MainBranchStatus, RemoteStatus } from '../../types/projectDashboard';
-import { interpolateTranslation, useI18n } from '../../../../UpdateWuruize/frontend/I18nContext';
+import { interpolateTranslation, useI18n } from '../../I18nContext';
 
 interface MultiOriginStatusProps {
   mainBranch: string;

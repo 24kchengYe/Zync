@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Session } from '../../../../frontend/src/types/session';
-import type { ProjectActivityStreamEntry } from '../../../../UpdateWuruize/frontend/ProjectActivityStreamDemoState';
-import { deriveProjectActivityStreamViews } from '../../../../UpdateWuruize/frontend/ProjectActivityStreamViewState';
+import type { ProjectActivityStreamEntry } from '../../../../frontend/src/ProjectActivityStreamDemoState';
+import { deriveProjectActivityStreamViews } from '../../../../frontend/src/ProjectActivityStreamViewState';
 
 function createSession(overrides: Partial<Session> & Pick<Session, 'id' | 'name'>): Session {
   return {

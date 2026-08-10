@@ -3,7 +3,7 @@ import { PanelContainerProps } from '../../types/panelComponents';
 import { ErrorBoundary } from 'react-error-boundary';
 import { PanelLoadingFallback } from './PanelLoadingFallback';
 import { renderLog } from '../../utils/console';
-import { interpolateTranslation, useI18n } from '../../../../UpdateWuruize/frontend/I18nContext';
+import { interpolateTranslation, useI18n } from '../../I18nContext';
 
 // Lazy load panel components for better performance
 const TerminalPanel = lazy(() => import('./TerminalPanel'));

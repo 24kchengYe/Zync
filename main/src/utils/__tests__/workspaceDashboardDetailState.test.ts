@@ -6,7 +6,7 @@ import {
   getLatestSessionSummary,
   resolveSelectedWorkspaceId,
   type WorkspaceDashboardRowLike,
-} from '../../../../UpdateWuruize/frontend/WorkspaceDashboardDetailState';
+} from '../../../../frontend/src/WorkspaceDashboardDetailState';
 import type { Session } from '../../../../frontend/src/types/session';
 
 function createWorkspaceRow(

@@ -10,7 +10,7 @@ import { FieldWithTooltip } from './ui/FieldWithTooltip';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { ToggleField } from './ui/Toggle';
-import { useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { useI18n } from '../I18nContext';
 import {
   buildProjectInitHooksPreview,
   DEFAULT_PROJECT_INIT_HOOKS_DEMO_CONFIG,
@@ -18,7 +18,7 @@ import {
   saveProjectInitHooksDemoConfig,
   type InitHookPanelKey,
   type ProjectInitHooksDemoConfig,
-} from '../../../UpdateWuruize/frontend/ProjectInitHooksDemoState';
+} from '../ProjectInitHooksDemoState';
 
 interface ProjectSettingsProps {
   project: Project;

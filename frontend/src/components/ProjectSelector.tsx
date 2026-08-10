@@ -10,7 +10,7 @@ import { EnhancedInput } from './ui/EnhancedInput';
 import { FieldWithTooltip } from './ui/FieldWithTooltip';
 import { Card } from './ui/Card';
 import { Folder, GitBranch, Hammer, Play } from 'lucide-react';
-import { useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { useI18n } from '../I18nContext';
 
 interface ProjectSelectorProps {
   onProjectChange?: (project: Project) => void;

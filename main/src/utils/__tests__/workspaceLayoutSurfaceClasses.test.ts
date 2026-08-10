@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getWorkspaceLayoutGridCellClassName,
   getWorkspaceLayoutSlotFrameClassName,
-} from '../../../../UpdateWuruize/frontend/WorkspaceLayoutSurfaceClasses';
+} from '../../../../frontend/src/WorkspaceLayoutSurfaceClasses';
 
 describe('workspace layout surface class contracts', () => {
   it('keeps each grid cell clipped to avoid panel overflow between rows', () => {

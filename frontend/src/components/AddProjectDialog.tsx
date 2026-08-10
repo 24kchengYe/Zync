@@ -8,7 +8,7 @@ import { Card } from './ui/Card';
 import { API } from '../utils/api';
 import { useNavigationStore } from '../stores/navigationStore';
 import type { CreateProjectRequest } from '../types/project';
-import { useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { useI18n } from '../I18nContext';
 
 interface AddProjectDialogProps {
   isOpen: boolean;

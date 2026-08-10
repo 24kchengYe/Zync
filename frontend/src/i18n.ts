@@ -1,4 +1,4 @@
-import type { AppConfig } from '../../frontend/src/types/config';
+import type { AppConfig } from './types/config';
 import { en } from './locales/en';
 import { zh } from './locales/zh';
 

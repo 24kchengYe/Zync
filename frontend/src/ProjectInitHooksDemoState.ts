@@ -1,4 +1,4 @@
-import type { Project } from '../../frontend/src/types/project';
+import type { Project } from './types/project';
 
 export type InitHookPanelKey = 'terminal' | 'explorer' | 'diff';
 

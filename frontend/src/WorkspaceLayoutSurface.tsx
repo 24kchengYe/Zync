@@ -12,9 +12,9 @@ import {
 import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Plus } from 'lucide-react';
 import type { ToolPanel } from '../../shared/types/panels';
-import { PanelContainer } from '../../frontend/src/components/panels/PanelContainer';
-import { cn } from '../../frontend/src/utils/cn';
-import type { PanelCreateOptions } from '../../frontend/src/types/panelComponents';
+import { PanelContainer } from './components/panels/PanelContainer';
+import { cn } from './utils/cn';
+import type { PanelCreateOptions } from './types/panelComponents';
 import type {
   WorkspaceLayoutFocusSlot,
   WorkspaceLayoutMode,

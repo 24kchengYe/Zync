@@ -11,12 +11,12 @@ import {
   buildWorkspaceActivityItems,
   buildWorkspaceDetailModel,
   type WorkspaceDashboardRowLike,
-} from '../../../../UpdateWuruize/frontend/WorkspaceDashboardDetailState';
+} from '../../WorkspaceDashboardDetailState';
 import {
   getSessionStatusLabel,
   interpolateTranslation,
   useI18n,
-} from '../../../../UpdateWuruize/frontend/I18nContext';
+} from '../../I18nContext';
 import type { Session } from '../../types/session';
 import { formatFullDateTime } from '../../utils/timestampUtils';
 import { Badge } from '../ui/Badge';

@@ -18,7 +18,7 @@ import { useConfigStore } from '../stores/configStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { API } from '../utils/api';
 import { Dropdown } from './ui/Dropdown';
-import { StartupEntryCard } from '../../../UpdateWuruize/frontend/ProjectEntryWidgets';
+import { StartupEntryCard } from '../ProjectEntryWidgets';
 import {
   LANGUAGE_OPTIONS,
   getSessionStatusLabel,
@@ -26,7 +26,7 @@ import {
   getThemeLabel,
   type Language,
   useI18n,
-} from '../../../UpdateWuruize/frontend/I18nContext';
+} from '../I18nContext';
 
 function getFallbackPlatform(): string {
   if (typeof navigator === 'undefined') {

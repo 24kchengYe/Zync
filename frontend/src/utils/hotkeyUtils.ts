@@ -12,7 +12,7 @@
  */
 import type { HotkeyDefinition } from '../stores/hotkeyStore';
 import { isMac } from './platformUtils';
-import type { TranslationKey } from '../../../UpdateWuruize/frontend/i18n';
+import type { TranslationKey } from '../i18n';
 
 /** Canonical display order for hotkey categories */
 export const CATEGORY_ORDER: HotkeyDefinition['category'][] = [

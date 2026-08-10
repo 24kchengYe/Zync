@@ -17,8 +17,8 @@ import {
   getDeleteProjectConfirmText,
   getWorkspaceCountLabel,
   useI18n,
-} from '../../../UpdateWuruize/frontend/I18nContext';
-import { useProjectEntryDemoState } from '../../../UpdateWuruize/frontend/ProjectEntryState';
+} from '../I18nContext';
+import { useProjectEntryDemoState } from '../ProjectEntryState';
 
 
 

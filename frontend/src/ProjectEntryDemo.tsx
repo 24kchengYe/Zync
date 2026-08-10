@@ -9,11 +9,11 @@ import {
   Star,
   Workflow,
 } from 'lucide-react';
-import type { Project } from '../../frontend/src/types/project';
-import { useSessionStore } from '../../frontend/src/stores/sessionStore';
-import { useNavigationStore } from '../../frontend/src/stores/navigationStore';
-import { API } from '../../frontend/src/utils/api';
-import { Button } from '../../frontend/src/components/ui/Button';
+import type { Project } from './types/project';
+import { useSessionStore } from './stores/sessionStore';
+import { useNavigationStore } from './stores/navigationStore';
+import { API } from './utils/api';
+import { Button } from './components/ui/Button';
 import {
   getWorkspaceCountLabel,
   useI18n,

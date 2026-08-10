@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertTriangle, Bot, GitBranch, MessageSquareMore, PencilLine } from 'lucide-react';
 import type { MainBranchStatus } from '../../types/projectDashboard';
-import { interpolateTranslation, useI18n } from '../../../../UpdateWuruize/frontend/I18nContext';
+import { interpolateTranslation, useI18n } from '../../I18nContext';
 import { Card } from '../ui/Card';
 
 interface StatusSummaryCardsProps {

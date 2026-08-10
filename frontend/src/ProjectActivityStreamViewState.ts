@@ -1,4 +1,4 @@
-import type { Session } from '../../frontend/src/types/session';
+import type { Session } from './types/session';
 import {
   getActivityAgentLabel,
   getLatestSessionSummary,

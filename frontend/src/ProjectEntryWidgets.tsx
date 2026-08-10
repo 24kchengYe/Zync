@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { ArrowRight, LayoutDashboard, Search, Workflow } from 'lucide-react';
-import type { Project } from '../../frontend/src/types/project';
-import { Button } from '../../frontend/src/components/ui/Button';
-import { Dropdown } from '../../frontend/src/components/ui/Dropdown';
+import type { Project } from './types/project';
+import { Button } from './components/ui/Button';
+import { Dropdown } from './components/ui/Dropdown';
 import { interpolateTranslation, useI18n } from './I18nContext';
 import type { TranslationKey } from './i18n';
 import { useProjectEntryDemoData, useProjectEntryDemoState } from './ProjectEntryState';

@@ -33,8 +33,8 @@ import { Tooltip } from './ui/Tooltip';
 import { Kbd } from './ui/Kbd';
 import { useErrorStore } from '../stores/errorStore';
 import ProjectSettings from './ProjectSettings';
-import { ProjectContextBanner } from '../../../UpdateWuruize/frontend/ProjectContextBanner';
-import { interpolateTranslation, useI18n } from '../../../UpdateWuruize/frontend/I18nContext';
+import { ProjectContextBanner } from '../ProjectContextBanner';
+import { interpolateTranslation, useI18n } from '../I18nContext';
 import {
   ALL_WORKSPACE_LAYOUT_SLOTS,
   DEFAULT_WORKSPACE_LAYOUT_DEMO_STATE,
@@ -50,8 +50,8 @@ import {
   type WorkspaceLayoutFocusSlot,
   type WorkspaceLayoutMode,
   type WorkspaceLayoutSlot,
-} from '../../../UpdateWuruize/frontend/WorkspaceLayoutDemoState';
-import { WorkspaceLayoutSurface } from '../../../UpdateWuruize/frontend/WorkspaceLayoutSurface';
+} from '../WorkspaceLayoutDemoState';
+import { WorkspaceLayoutSurface } from '../WorkspaceLayoutSurface';
 
 export const SessionView = memo(() => {
   const { t } = useI18n();
