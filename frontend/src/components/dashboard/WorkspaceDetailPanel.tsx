@@ -11,7 +11,7 @@ import {
   buildWorkspaceActivityItems,
   buildWorkspaceDetailModel,
   type WorkspaceDashboardRowLike,
-} from '../../WorkspaceDashboardDetailState';
+} from '../../features/project-dashboard/workspaceDashboardDetailState';
 import {
   getSessionStatusLabel,
   interpolateTranslation,

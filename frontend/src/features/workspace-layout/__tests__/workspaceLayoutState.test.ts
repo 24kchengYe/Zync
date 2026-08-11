@@ -1,13 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import type { ToolPanel } from '../../../../shared/types/panels';
+import type { ToolPanel } from '../../../../../shared/types/panels';
 import {
   getWorkspacePersistenceKey,
-  loadWorkspaceLayoutDemoState,
+  loadWorkspaceLayoutState,
   getWorkspaceLayoutFocusSlots,
-  normalizeWorkspaceLayoutDemoState,
-  saveWorkspaceLayoutDemoState,
-  type WorkspaceLayoutDemoState,
-} from '../../../../frontend/src/WorkspaceLayoutDemoState';
+  normalizeWorkspaceLayoutState,
+  saveWorkspaceLayoutState,
+} from '../workspaceLayoutState';
 
 function createPanel(
   overrides: Partial<ToolPanel> & Pick<ToolPanel, 'id' | 'sessionId' | 'type' | 'title'>,
@@ -58,7 +57,7 @@ afterEach(() => {
   localStorageMock.clear();
 });
 
-describe('normalizeWorkspaceLayoutDemoState', () => {
+describe('normalizeWorkspaceLayoutState', () => {
   it('normalizes slot assignments for grid layouts and keeps the focused slot when it is visible', () => {
     const panels: ToolPanel[] = [
       createPanel({
@@ -92,7 +91,7 @@ describe('normalizeWorkspaceLayoutDemoState', () => {
       }),
     ];
 
-    const normalized = normalizeWorkspaceLayoutDemoState(
+    const normalized = normalizeWorkspaceLayoutState(
       {
         mode: 'topBottomGrid',
         slotAssignments: {
@@ -128,7 +127,7 @@ describe('normalizeWorkspaceLayoutDemoState', () => {
       }),
     ];
 
-    const normalized = normalizeWorkspaceLayoutDemoState(
+    const normalized = normalizeWorkspaceLayoutState(
       {
         mode: 'single',
         slotAssignments: {
@@ -178,7 +177,7 @@ describe('normalizeWorkspaceLayoutDemoState', () => {
       }),
     ];
 
-    const normalized = normalizeWorkspaceLayoutDemoState(
+    const normalized = normalizeWorkspaceLayoutState(
       {
         mode: 'quad',
         slotAssignments: {
@@ -246,7 +245,7 @@ describe('workspace layout persistence', () => {
     );
 
     expect(
-      loadWorkspaceLayoutDemoState(workspaceKey),
+      loadWorkspaceLayoutState(workspaceKey),
     ).toEqual({
       mode: 'topBottomGrid',
       slotAssignments: {
@@ -284,7 +283,7 @@ describe('workspace layout persistence', () => {
       }),
     );
 
-    const loaded = loadWorkspaceLayoutDemoState(workspaceKey, {
+    const loaded = loadWorkspaceLayoutState(workspaceKey, {
       legacyStorageKeys: ['session-old'],
     });
 
@@ -299,7 +298,7 @@ describe('workspace layout persistence', () => {
       focusSlot: 'slot2',
     });
 
-    const stored = loadWorkspaceLayoutDemoState(workspaceKey);
+    const stored = loadWorkspaceLayoutState(workspaceKey);
     expect(stored).toEqual(loaded);
   });
 
@@ -325,7 +324,7 @@ describe('workspace layout persistence', () => {
       }),
     ];
 
-    saveWorkspaceLayoutDemoState(
+    saveWorkspaceLayoutState(
       'workspace:D:/D/worktrees/main',
       {
         mode: 'topBottomGrid',
@@ -360,8 +359,8 @@ describe('workspace layout persistence', () => {
       ],
     );
 
-    const normalized = normalizeWorkspaceLayoutDemoState(
-      loadWorkspaceLayoutDemoState('workspace:D:/D/worktrees/main'),
+    const normalized = normalizeWorkspaceLayoutState(
+      loadWorkspaceLayoutState('workspace:D:/D/worktrees/main'),
       'panel-terminal-new',
       panels,
     );

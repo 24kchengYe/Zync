@@ -1406,27 +1406,27 @@ export const useSessionView = (
     
     // Check if conflicts were detected before rebase (new pre-check)
     if (details.hasConflicts) {
-      tips.push('â€¢ Conflicts were detected before starting the rebase');
-      tips.push('â€¢ Click "Use Claude Code to Resolve" to let Claude handle the conflicts');
-      tips.push('â€¢ Alternatively, you can manually resolve conflicts by:');
+      tips.push('â€?Conflicts were detected before starting the rebase');
+      tips.push('â€?Click "Use Claude Code to Resolve" to let Claude handle the conflicts');
+      tips.push('â€?Alternatively, you can manually resolve conflicts by:');
       tips.push('  1. Running the rebase manually: git rebase <branch>');
       tips.push('  2. Fixing conflicts in the listed files');
       tips.push('  3. Running: git add <fixed-files> && git rebase --continue');
       if (details.conflictingFiles && details.conflictingFiles.length > 0) {
-        tips.push(`â€¢ ${details.conflictingFiles.length} file(s) have conflicts that need resolution`);
+        tips.push(`â€?${details.conflictingFiles.length} file(s) have conflicts that need resolution`);
       }
     } else if (output.includes('conflict') || message.includes('conflict')) {
-      tips.push('â€¢ You have merge conflicts that need to be resolved manually');
-      tips.push('â€¢ Use "git status" to see conflicted files');
-      tips.push('â€¢ Edit the conflicted files to resolve conflicts, then stage and commit');
-      tips.push('â€¢ After resolving, run "git rebase --continue" or "git rebase --abort"');
+      tips.push('â€?You have merge conflicts that need to be resolved manually');
+      tips.push('â€?Use "git status" to see conflicted files');
+      tips.push('â€?Edit the conflicted files to resolve conflicts, then stage and commit');
+      tips.push('â€?After resolving, run "git rebase --continue" or "git rebase --abort"');
     } else if (output.includes('uncommitted changes') || output.includes('unstaged changes')) {
-      tips.push('â€¢ You have uncommitted changes that prevent the operation');
-      tips.push('â€¢ Either commit your changes first or stash them with "git stash"');
-      tips.push('â€¢ After the operation, you can apply stashed changes with "git stash pop"');
+      tips.push('â€?You have uncommitted changes that prevent the operation');
+      tips.push('â€?Either commit your changes first or stash them with "git stash"');
+      tips.push('â€?After the operation, you can apply stashed changes with "git stash pop"');
     } else {
-      tips.push('â€¢ Check if you have uncommitted changes that need to be resolved');
-      tips.push('â€¢ Verify that the main branch exists and is up to date');
+      tips.push('â€?Check if you have uncommitted changes that need to be resolved');
+      tips.push('â€?Verify that the main branch exists and is up to date');
     }
     return tips;
   };

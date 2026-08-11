@@ -13,12 +13,12 @@ import { ToggleField } from './ui/Toggle';
 import { useI18n } from '../I18nContext';
 import {
   buildProjectInitHooksPreview,
-  DEFAULT_PROJECT_INIT_HOOKS_DEMO_CONFIG,
-  loadProjectInitHooksDemoConfig,
-  saveProjectInitHooksDemoConfig,
+  DEFAULT_PROJECT_INIT_HOOKS_CONFIG,
+  loadProjectInitHooksConfig,
+  saveProjectInitHooksConfig,
   type InitHookPanelKey,
-  type ProjectInitHooksDemoConfig,
-} from '../ProjectInitHooksDemoState';
+  type ProjectInitHooksConfig,
+} from '../features/workspace-init-hooks/projectInitHooksState';
 
 interface ProjectSettingsProps {
   project: Project;
@@ -38,7 +38,7 @@ export default function ProjectSettings({ project, isOpen, onClose, onUpdate, on
   const [currentBranch, setCurrentBranch] = useState<string | null>(null);
   const [openIdeCommand, setOpenIdeCommand] = useState('');
   const [worktreeFolder, setWorktreeFolder] = useState('');
-  const [initHooksConfig, setInitHooksConfig] = useState<ProjectInitHooksDemoConfig>(DEFAULT_PROJECT_INIT_HOOKS_DEMO_CONFIG);
+  const [initHooksConfig, setInitHooksConfig] = useState<ProjectInitHooksConfig>(DEFAULT_PROJECT_INIT_HOOKS_CONFIG);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -78,7 +78,7 @@ export default function ProjectSettings({ project, isOpen, onClose, onUpdate, on
       }
       setOpenIdeCommand(project.open_ide_command || '');
       setWorktreeFolder(project.worktree_folder || '');
-      setInitHooksConfig(loadProjectInitHooksDemoConfig(project.id));
+      setInitHooksConfig(loadProjectInitHooksConfig(project.id));
       setError(null);
     }
   }, [isOpen, project]);
@@ -104,7 +104,7 @@ export default function ProjectSettings({ project, isOpen, onClose, onUpdate, on
         throw new Error(response.error || 'Failed to update project');
       }
 
-      saveProjectInitHooksDemoConfig(project.id, initHooksConfig);
+      saveProjectInitHooksConfig(project.id, initHooksConfig);
       onUpdate();
       onClose();
     } catch (err) {

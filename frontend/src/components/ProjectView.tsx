@@ -11,7 +11,7 @@ import { PanelCreateOptions } from '../types/panelComponents';
 import { SessionProvider } from '../contexts/SessionContext';
 import { DetailPanel } from './DetailPanel';
 import { useResizable } from '../hooks/useResizable';
-import { ProjectContextBanner } from '../ProjectContextBanner';
+import { ProjectContextBanner } from '../features/project-entry/ProjectContextBanner';
 import { useI18n } from '../I18nContext';
 import { useNavigationStore } from '../stores/navigationStore';
 

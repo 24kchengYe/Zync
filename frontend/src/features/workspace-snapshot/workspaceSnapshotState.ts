@@ -1,18 +1,18 @@
-import type { ToolPanel, ToolPanelType } from '../../shared/types/panels';
+import type { ToolPanel, ToolPanelType } from '../../../../shared/types/panels';
 import {
-  DEFAULT_WORKSPACE_LAYOUT_DEMO_STATE,
+  DEFAULT_WORKSPACE_LAYOUT_STATE,
   getWorkspacePersistenceKey,
-  normalizeWorkspaceLayoutDemoState,
-  type WorkspaceLayoutDemoState,
+  normalizeWorkspaceLayoutState,
+  type WorkspaceLayoutState,
   type WorkspaceLayoutSlot,
-} from './WorkspaceLayoutDemoState';
+} from '../workspace-layout/workspaceLayoutState';
 
-export { getWorkspacePersistenceKey } from './WorkspaceLayoutDemoState';
+export { getWorkspacePersistenceKey } from '../workspace-layout/workspaceLayoutState';
 
 export type WorkspaceSnapshotKind = 'manual' | 'auto_before_restore';
 export type WorkspaceSnapshotSupportedPanelType = 'terminal' | 'explorer' | 'diff';
 
-export type WorkspaceSnapshotLayoutRecord = WorkspaceLayoutDemoState;
+export type WorkspaceSnapshotLayoutRecord = WorkspaceLayoutState;
 
 export interface WorkspaceSnapshotPanelRecord {
   panelId: string;
@@ -76,7 +76,11 @@ export interface LoadWorkspaceSnapshotsOptions {
   worktreePath?: string;
 }
 
-const STORAGE_KEY = 'zync-workspace-snapshots-demo-v1';
+const STORAGE_KEYS = [
+  'zync-workspace-snapshots-v1',
+  'zync-workspace-snapshots-preview-v1',
+  'zync-workspace-snapshots-demo-v1',
+] as const;
 const MAX_SNAPSHOTS_PER_SESSION = 20;
 const SUPPORTED_PANEL_TYPES: WorkspaceSnapshotSupportedPanelType[] = ['terminal', 'explorer', 'diff'];
 
@@ -233,9 +237,9 @@ function normalizeSnapshotLayout(
   activePanelId: string | null,
   panels: ToolPanel[],
 ) {
-  const normalizedLayout = normalizeWorkspaceLayoutDemoState(
+  const normalizedLayout = normalizeWorkspaceLayoutState(
     {
-      ...DEFAULT_WORKSPACE_LAYOUT_DEMO_STATE,
+      ...DEFAULT_WORKSPACE_LAYOUT_STATE,
       ...layout,
     },
     activePanelId,
@@ -275,10 +279,10 @@ function loadAllWorkspaceSnapshots(): Record<string, WorkspaceSnapshotRecord[]> 
   }
 
   try {
-    const rawValue = window.localStorage.getItem(STORAGE_KEY);
-    if (!rawValue) {
-      return {};
-    }
+    const rawValue = STORAGE_KEYS
+      .map((storageKey) => window.localStorage.getItem(storageKey))
+      .find((value): value is string => Boolean(value));
+    if (!rawValue) return {};
 
     const parsed = JSON.parse(rawValue) as Record<string, WorkspaceSnapshotRecord[]>;
     return Object.fromEntries(
@@ -288,7 +292,7 @@ function loadAllWorkspaceSnapshots(): Record<string, WorkspaceSnapshotRecord[]> 
       ]),
     );
   } catch (error) {
-    console.error('[WorkspaceSnapshotDemoState] Failed to load snapshots:', error);
+    console.error('[WorkspaceSnapshotState] Failed to load snapshots:', error);
     return {};
   }
 }
@@ -298,7 +302,7 @@ function saveAllWorkspaceSnapshots(snapshotsBySession: Record<string, WorkspaceS
     return;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshotsBySession));
+  window.localStorage.setItem(STORAGE_KEYS[0], JSON.stringify(snapshotsBySession));
 }
 
 export function isWorkspaceSnapshotSupportedPanelType(

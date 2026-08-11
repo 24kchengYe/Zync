@@ -1181,24 +1181,24 @@ export function Settings({ isOpen, onClose, initialSection }: SettingsProps) {
                 <div className="bg-surface-tertiary rounded-lg p-4 border border-border-secondary">
                   <h4 className="font-medium text-text-primary mb-3 text-sm">{t('settings.analytics.track.title')}</h4>
                   <ul className="space-y-1 text-xs text-text-secondary">
-                    <li>â€¢ {t('settings.analytics.track.item1')}</li>
-                    <li>â€¢ {t('settings.analytics.track.item2')}</li>
-                    <li>â€¢ {t('settings.analytics.track.item3')}</li>
-                    <li>â€¢ {t('settings.analytics.track.item4')}</li>
-                    <li>â€¢ {t('settings.analytics.track.item5')}</li>
-                    <li>â€¢ {t('settings.analytics.track.item6')}</li>
+                    <li>â€?{t('settings.analytics.track.item1')}</li>
+                    <li>â€?{t('settings.analytics.track.item2')}</li>
+                    <li>â€?{t('settings.analytics.track.item3')}</li>
+                    <li>â€?{t('settings.analytics.track.item4')}</li>
+                    <li>â€?{t('settings.analytics.track.item5')}</li>
+                    <li>â€?{t('settings.analytics.track.item6')}</li>
                   </ul>
                 </div>
 
                 <div className="bg-status-error/10 rounded-lg p-4 border border-status-error/30">
                   <h4 className="font-medium text-text-primary mb-3 text-sm">{t('settings.analytics.never.title')}</h4>
                   <ul className="space-y-1 text-xs text-text-secondary">
-                    <li>â€¢ {t('settings.analytics.never.item1')}</li>
-                    <li>â€¢ {t('settings.analytics.never.item2')}</li>
-                    <li>â€¢ {t('settings.analytics.never.item3')}</li>
-                    <li>â€¢ {t('settings.analytics.never.item4')}</li>
-                    <li>â€¢ {t('settings.analytics.never.item5')}</li>
-                    <li>â€¢ {t('settings.analytics.never.item6')}</li>
+                    <li>â€?{t('settings.analytics.never.item1')}</li>
+                    <li>â€?{t('settings.analytics.never.item2')}</li>
+                    <li>â€?{t('settings.analytics.never.item3')}</li>
+                    <li>â€?{t('settings.analytics.never.item4')}</li>
+                    <li>â€?{t('settings.analytics.never.item5')}</li>
+                    <li>â€?{t('settings.analytics.never.item6')}</li>
                   </ul>
                 </div>
 

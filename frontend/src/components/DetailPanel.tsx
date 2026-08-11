@@ -20,11 +20,11 @@ import { panelApi } from '../services/panelApi';
 import { usePanelStore } from '../stores/panelStore';
 import { interpolateTranslation, useI18n } from '../I18nContext';
 import {
-  DEFAULT_WORKSPACE_LAYOUT_DEMO_STATE,
+  DEFAULT_WORKSPACE_LAYOUT_STATE,
   getWorkspacePersistenceKey,
-  type WorkspaceLayoutDemoState,
-} from '../WorkspaceLayoutDemoState';
-import { WorkspaceSnapshotDialog } from '../WorkspaceSnapshotDialog';
+  type WorkspaceLayoutState,
+} from '../features/workspace-layout/workspaceLayoutState';
+import { WorkspaceSnapshotDialog } from '../features/workspace-snapshot/WorkspaceSnapshotDialog';
 import {
   buildWorkspaceSnapshotRestorePreview,
   createAndStoreWorkspaceSnapshot,
@@ -32,7 +32,7 @@ import {
   isWorkspaceSnapshotSupportedPanelType,
   loadWorkspaceSnapshots,
   type WorkspaceSnapshotRecord,
-} from '../WorkspaceSnapshotDemoState';
+} from '../features/workspace-snapshot/workspaceSnapshotState';
 
 interface DetailPanelProps {
   isVisible: boolean;
@@ -40,8 +40,8 @@ interface DetailPanelProps {
   width: number;
   onResize: (e: React.MouseEvent) => void;
   mergeError?: string | null;
-  workspaceLayoutState?: WorkspaceLayoutDemoState;
-  onRestoreWorkspaceLayoutState?: (state: WorkspaceLayoutDemoState) => void;
+  workspaceLayoutState?: WorkspaceLayoutState;
+  onRestoreWorkspaceLayoutState?: (state: WorkspaceLayoutState) => void;
   projectGitActions?: {
     onPull?: () => void;
     onPush?: () => void;
@@ -85,7 +85,7 @@ export function DetailPanel({
   width,
   onResize,
   mergeError,
-  workspaceLayoutState = DEFAULT_WORKSPACE_LAYOUT_DEMO_STATE,
+  workspaceLayoutState = DEFAULT_WORKSPACE_LAYOUT_STATE,
   onRestoreWorkspaceLayoutState = () => {},
   projectGitActions,
 }: DetailPanelProps) {

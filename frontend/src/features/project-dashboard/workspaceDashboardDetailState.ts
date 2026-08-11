@@ -1,5 +1,5 @@
-import type { SessionBranchInfo } from './types/projectDashboard';
-import type { Session } from './types/session';
+import type { SessionBranchInfo } from '../../types/projectDashboard';
+import type { Session } from '../../types/session';
 
 export type WorkspaceDashboardRuntimeStatus = Session['status'] | 'unknown';
 export type WorkspaceDetailType = 'main' | 'standard';

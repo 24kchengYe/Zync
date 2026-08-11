@@ -14,7 +14,7 @@ import { Tooltip } from '../ui/Tooltip';
 import { Kbd } from '../ui/Kbd';
 import { useResourceMonitor } from '../../hooks/useResourceMonitor';
 import { interpolateTranslation, useI18n } from '../../I18nContext';
-import type { WorkspaceLayoutMode } from '../../WorkspaceLayoutDemoState';
+import type { WorkspaceLayoutMode } from '../../features/workspace-layout/workspaceLayoutState';
 
 function formatMemory(mb: number): string {
   if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;

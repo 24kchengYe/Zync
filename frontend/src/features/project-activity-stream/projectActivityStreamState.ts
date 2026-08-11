@@ -70,7 +70,8 @@ export interface SyncProjectActivityStreamInput
   storageKey: string;
 }
 
-const STORAGE_KEY_PREFIX = 'zync-project-activity-stream-demo-v1';
+const STORAGE_KEY_PREFIX = 'zync-project-activity-stream-preview-v1';
+const LEGACY_STORAGE_KEY_PREFIXES = ['zync-project-activity-stream-demo-v1'];
 const MAX_PROJECT_ACTIVITY_ENTRIES = 120;
 export const HEARTBEAT_INTERVAL_MS = 12_000;
 
@@ -197,13 +198,23 @@ export function loadProjectActivityStreamState(storageKey: string) {
     return null;
   }
 
-  const raw = localStorage.getItem(storageKey);
+  const candidateKeys = [
+    storageKey,
+    ...LEGACY_STORAGE_KEY_PREFIXES.map((prefix) => storageKey.replace(STORAGE_KEY_PREFIX, prefix)),
+  ];
+  const raw = candidateKeys
+    .map((candidateKey) => localStorage.getItem(candidateKey))
+    .find((value): value is string => Boolean(value));
   if (!raw) {
     return null;
   }
 
   try {
-    return JSON.parse(raw) as ProjectActivityStreamState;
+    const parsed = JSON.parse(raw) as ProjectActivityStreamState;
+    return {
+      ...parsed,
+      projectKey: storageKey,
+    };
   } catch {
     return null;
   }

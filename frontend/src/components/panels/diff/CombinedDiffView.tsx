@@ -393,7 +393,7 @@ const CombinedDiffView = memo(forwardRef<CombinedDiffViewHandle, CombinedDiffVie
     [executions]
   );
 
-  // Parse files from diff â€” single parse, shared between FileList and DiffViewer
+  // Parse files from diff â€?single parse, shared between FileList and DiffViewer
   const parsedFiles = useMemo(() => {
     if (!combinedDiff?.diff) return [];
     return parseUnifiedDiffToFiles(combinedDiff.diff);

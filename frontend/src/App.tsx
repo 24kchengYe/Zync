@@ -30,7 +30,7 @@ import { CloudOverlay } from './components/CloudOverlay';
 import { CloudWidget } from './components/CloudWidget';
 import { CreateSessionDialog } from './components/CreateSessionDialog';
 import { AddProjectDialog } from './components/AddProjectDialog';
-import { QuickSwitcherDemo } from './QuickSwitcherDemo';
+import { QuickSwitcher } from './features/quick-switcher/QuickSwitcher';
 import { useI18n } from './I18nContext';
 import { useNavigationStore } from './stores/navigationStore';
 import { initPostHog, capture, posthog } from './services/posthog';
@@ -559,7 +559,7 @@ function App() {
           isOpen={isCommandPaletteOpen}
           onClose={() => setIsCommandPaletteOpen(false)}
         />
-        <QuickSwitcherDemo
+        <QuickSwitcher
           isOpen={isQuickSwitcherOpen}
           onClose={() => setIsQuickSwitcherOpen(false)}
           projects={projects}

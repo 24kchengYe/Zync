@@ -21,10 +21,17 @@ import { dashboardCache } from '../utils/dashboardCache';
 import { interpolateTranslation, useI18n } from '../I18nContext';
 import {
   buildProjectInitHooksPreview,
-  loadProjectInitHooksDemoConfig,
+  loadProjectInitHooksConfig,
   type InitHookPanelKey,
   type ProjectInitHooksPreview,
-} from '../ProjectInitHooksDemoState';
+} from '../features/workspace-init-hooks/projectInitHooksState';
+import {
+  applySuggestedNamesToUneditedEntries,
+  createWorkspaceEntry,
+  getSuggestionBaseName,
+  getUniqueWorkspaceName,
+  type WorkspaceEntry,
+} from './createSessionWorkspaceEntries';
 
 // Interface for branch information
 interface BranchInfo {
@@ -32,12 +39,6 @@ interface BranchInfo {
   isCurrent: boolean;
   hasWorktree: boolean;
   isRemote: boolean;
-}
-
-interface WorkspaceEntry {
-  id: string;
-  name: string;
-  userEdited: boolean;
 }
 
 interface CreateSessionDialogProps {
@@ -98,78 +99,31 @@ export function CreateSessionDialog({
     ? interpolateTranslation(t('createSession.title.withProject'), { projectName })
     : t('createSession.title.default');
 
-  const createWorkspaceEntry = useCallback((name: string, userEdited = false): WorkspaceEntry => {
+  const createNextWorkspaceEntry = useCallback((name: string, userEdited = false): WorkspaceEntry => {
     workspaceIdRef.current += 1;
-    return {
-      id: `workspace-${workspaceIdRef.current}`,
-      name,
-      userEdited
-    };
+    return createWorkspaceEntry(workspaceIdRef.current, name, userEdited);
   }, []);
 
-  const getSuggestionBaseName = useCallback((branchName?: string) => {
-    const trimmedBranchName = branchName?.trim();
-    if (!trimmedBranchName) {
-      return 'workspace';
-    }
-
-    const baseName = trimmedBranchName.replace(/^[^/]+\//, '').trim();
-    return baseName || 'workspace';
-  }, []);
-
-  const getUniqueWorkspaceName = useCallback((baseName: string, reservedNames: Set<string>) => {
-    const normalizedBaseName = baseName.trim() || 'workspace';
-
-    if (!reservedNames.has(normalizedBaseName.toLowerCase())) {
-      return normalizedBaseName;
-    }
-
-    let suffix = 2;
-    while (reservedNames.has(`${normalizedBaseName}-${suffix}`.toLowerCase())) {
-      suffix += 1;
-    }
-
-    return `${normalizedBaseName}-${suffix}`;
-  }, []);
-
-  const applySuggestedNamesToUneditedEntries = useCallback((entries: WorkspaceEntry[], branchName?: string) => {
-    const reservedNames = new Set(existingSessions.map(session => session.name.trim().toLowerCase()).filter(Boolean));
-    const baseName = getSuggestionBaseName(branchName);
-
-    return entries.map(entry => {
-      if (entry.userEdited) {
-        const trimmedName = entry.name.trim().toLowerCase();
-        if (trimmedName) {
-          reservedNames.add(trimmedName);
-        }
-        return entry;
-      }
-
-      const suggestedName = getUniqueWorkspaceName(baseName, reservedNames);
-      reservedNames.add(suggestedName.toLowerCase());
-      return {
-        ...entry,
-        name: suggestedName
-      };
-    });
-  }, [existingSessions, getSuggestionBaseName, getUniqueWorkspaceName]);
+  const applySuggestedWorkspaceNames = useCallback((entries: WorkspaceEntry[], branchName?: string) => (
+    applySuggestedNamesToUneditedEntries(entries, branchName, existingSessions)
+  ), [existingSessions]);
 
   // Load session creation preferences when dialog opens
   useEffect(() => {
     if (isOpen) {
       loadPreferences();
       workspaceIdRef.current = 0;
-      const initialEntries = [createWorkspaceEntry(initialSessionName || '', !!initialSessionName)];
+      const initialEntries = [createNextWorkspaceEntry(initialSessionName || '', !!initialSessionName)];
       setWorkspaceEntries(
         initialBaseBranch && !initialSessionName
-          ? applySuggestedNamesToUneditedEntries(initialEntries, initialBaseBranch)
+          ? applySuggestedWorkspaceNames(initialEntries, initialBaseBranch)
           : initialEntries
       );
       setFormData(prev => ({ ...prev, baseBranch: initialBaseBranch }));
     }
   }, [
-    applySuggestedNamesToUneditedEntries,
-    createWorkspaceEntry,
+    applySuggestedWorkspaceNames,
+    createNextWorkspaceEntry,
     initialBaseBranch,
     initialSessionName,
     isOpen,
@@ -197,7 +151,7 @@ export function CreateSessionDialog({
       }
 
       setCurrentProject(project);
-      const config = loadProjectInitHooksDemoConfig(projectId);
+      const config = loadProjectInitHooksConfig(projectId);
       const preview = buildProjectInitHooksPreview(project, config);
       setProjectInitHooksPreview(preview);
       setUseProjectInitHooks((previousValue) => {
@@ -280,7 +234,7 @@ export function CreateSessionDialog({
               if (defaultBranch) {
                 setFormData(prev => ({ ...prev, baseBranch: defaultBranch.name }));
                 if (!initialSessionName) {
-                  setWorkspaceEntries(prev => applySuggestedNamesToUneditedEntries(prev, defaultBranch.name));
+                  setWorkspaceEntries(prev => applySuggestedWorkspaceNames(prev, defaultBranch.name));
                 }
               }
             }
@@ -297,7 +251,7 @@ export function CreateSessionDialog({
       }
     }
   }, [
-    applySuggestedNamesToUneditedEntries,
+    applySuggestedWorkspaceNames,
     formData.baseBranch,
     initialSessionName,
     isOpen,
@@ -356,8 +310,8 @@ export function CreateSessionDialog({
     setIsBranchDropdownOpen(false);
     setBranchSearch('');
     setHighlightedBranchIndex(0);
-    setWorkspaceEntries(prev => applySuggestedNamesToUneditedEntries(prev, branchName));
-  }, [applySuggestedNamesToUneditedEntries, savePreferences]);
+    setWorkspaceEntries(prev => applySuggestedWorkspaceNames(prev, branchName));
+  }, [applySuggestedWorkspaceNames, savePreferences]);
 
   const handleBranchKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isBranchDropdownOpen) {
@@ -534,10 +488,10 @@ export function CreateSessionDialog({
       });
 
       const suggestedName = getUniqueWorkspaceName(getSuggestionBaseName(formData.baseBranch), reservedNames);
-      return [...prev, createWorkspaceEntry(suggestedName)];
+      return [...prev, createNextWorkspaceEntry(suggestedName)];
     });
   }, [
-    createWorkspaceEntry,
+    createNextWorkspaceEntry,
     existingSessions,
     formData.baseBranch,
     getSuggestionBaseName,
@@ -1082,7 +1036,7 @@ export function CreateSessionDialog({
                     onChange={(checked) => {
                       setUseWorktree(checked);
                       if (!checked) {
-                        setWorkspaceEntries(prev => prev.length > 0 ? [prev[0]] : [createWorkspaceEntry('')]);
+                        setWorkspaceEntries(prev => prev.length > 0 ? [prev[0]] : [createNextWorkspaceEntry('')]);
                       }
                     }}
                     size="sm"

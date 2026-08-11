@@ -33,25 +33,25 @@ import { Tooltip } from './ui/Tooltip';
 import { Kbd } from './ui/Kbd';
 import { useErrorStore } from '../stores/errorStore';
 import ProjectSettings from './ProjectSettings';
-import { ProjectContextBanner } from '../ProjectContextBanner';
+import { ProjectContextBanner } from '../features/project-entry/ProjectContextBanner';
 import { interpolateTranslation, useI18n } from '../I18nContext';
 import {
   ALL_WORKSPACE_LAYOUT_SLOTS,
-  DEFAULT_WORKSPACE_LAYOUT_DEMO_STATE,
+  DEFAULT_WORKSPACE_LAYOUT_STATE,
   DEFAULT_WORKSPACE_LAYOUT_SPLIT_RATIO,
   getNextWorkspaceLayoutFocusSlot,
   getWorkspaceLayoutFocusSlots,
   getWorkspacePersistenceKey,
   MAX_WORKSPACE_LAYOUT_SPLIT_RATIO,
   MIN_WORKSPACE_LAYOUT_SPLIT_RATIO,
-  loadWorkspaceLayoutDemoState,
-  normalizeWorkspaceLayoutDemoState,
-  saveWorkspaceLayoutDemoState,
+  loadWorkspaceLayoutState,
+  normalizeWorkspaceLayoutState,
+  saveWorkspaceLayoutState,
   type WorkspaceLayoutFocusSlot,
   type WorkspaceLayoutMode,
   type WorkspaceLayoutSlot,
-} from '../WorkspaceLayoutDemoState';
-import { WorkspaceLayoutSurface } from '../WorkspaceLayoutSurface';
+} from '../features/workspace-layout/workspaceLayoutState';
+import { WorkspaceLayoutSurface } from '../features/workspace-layout/WorkspaceLayoutSurface';
 
 export const SessionView = memo(() => {
   const { t } = useI18n();
@@ -625,7 +625,7 @@ export const SessionView = memo(() => {
     return stored !== null ? stored === 'true' : true;
   });
   const [workspaceLayoutState, setWorkspaceLayoutState] = useState(
-    DEFAULT_WORKSPACE_LAYOUT_DEMO_STATE,
+    DEFAULT_WORKSPACE_LAYOUT_STATE,
   );
   const loadedWorkspaceLayoutStorageKeyRef = useRef<string | null>(null);
   const workspaceLayoutStorageKey = useMemo(
@@ -655,14 +655,14 @@ export const SessionView = memo(() => {
     if (!activeSession?.id || !workspaceLayoutStorageKey) return;
     loadedWorkspaceLayoutStorageKeyRef.current = workspaceLayoutStorageKey;
     setWorkspaceLayoutState(
-      loadWorkspaceLayoutDemoState(workspaceLayoutStorageKey, {
+      loadWorkspaceLayoutState(workspaceLayoutStorageKey, {
         legacyStorageKeys: [activeSession.id],
       }),
     );
   }, [activeSession?.id, workspaceLayoutStorageKey]);
 
   const normalizedWorkspaceLayoutState = useMemo(
-    () => normalizeWorkspaceLayoutDemoState(
+    () => normalizeWorkspaceLayoutState(
       workspaceLayoutState,
       currentActivePanel?.id ?? null,
       sortedSessionPanels,
@@ -694,7 +694,7 @@ export const SessionView = memo(() => {
   useEffect(() => {
     if (!activeSession?.id || !workspaceLayoutStorageKey) return;
     if (loadedWorkspaceLayoutStorageKeyRef.current !== workspaceLayoutStorageKey) return;
-    saveWorkspaceLayoutDemoState(
+    saveWorkspaceLayoutState(
       workspaceLayoutStorageKey,
       normalizedWorkspaceLayoutState,
       sortedSessionPanels,

@@ -50,7 +50,7 @@ export const GitErrorDialog: React.FC<GitErrorDialogProps> = ({
                 <Card variant="bordered" padding="md" className="bg-surface-tertiary">
                   <ul className="text-sm font-mono space-y-1">
                     {errorDetails.conflictingFiles.map((file, idx) => (
-                      <li key={idx} className="text-text-primary">â€¢ {file}</li>
+                      <li key={idx} className="text-text-primary">â€?{file}</li>
                     ))}
                   </ul>
                 </Card>

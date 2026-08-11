@@ -49,7 +49,7 @@ function CommitTooltipContent({ entry }: { entry: GitGraphCommitData }) {
 
       <div className="border-t border-border-primary" />
 
-      {/* Metadata rows â€” click to copy */}
+      {/* Metadata rows â€?click to copy */}
       <div className="space-y-0.5 text-[10px]">
         <CopyableField icon={User} value={`${entry.author}${entry.authorEmail ? ` <${entry.authorEmail}>` : ''}`} />
         <CopyableField icon={Hash} value={entry.hash} mono />

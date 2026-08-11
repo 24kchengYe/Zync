@@ -7,23 +7,23 @@ import {
   RotateCcw,
   Trash2,
 } from 'lucide-react';
-import { Badge } from './components/ui/Badge';
-import { Button } from './components/ui/Button';
-import { Input } from './components/ui/Input';
+import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import {
   Modal,
   ModalBody,
   ModalFooter,
   ModalHeader,
-} from './components/ui/Modal';
-import { cn } from './utils/cn';
-import { interpolateTranslation, useI18n } from './I18nContext';
-import type { WorkspaceLayoutDemoState } from './WorkspaceLayoutDemoState';
+} from '../../components/ui/Modal';
+import { cn } from '../../utils/cn';
+import { interpolateTranslation, useI18n } from '../../I18nContext';
+import type { WorkspaceLayoutState } from '../workspace-layout/workspaceLayoutState';
 import type {
   WorkspaceSnapshotRecord,
   WorkspaceSnapshotRestorePreview,
   WorkspaceSnapshotSupportedPanelType,
-} from './WorkspaceSnapshotDemoState';
+} from './workspaceSnapshotState';
 
 type WorkspaceSnapshotDialogMode = 'save' | 'restore';
 
@@ -40,7 +40,7 @@ interface WorkspaceSnapshotDialogProps {
   snapshots: WorkspaceSnapshotRecord[];
   selectedSnapshotId: string | null;
   snapshotName: string;
-  currentLayout: WorkspaceLayoutDemoState;
+  currentLayout: WorkspaceLayoutState;
   restorePreview: WorkspaceSnapshotRestorePreview | null;
   onSnapshotNameChange: (value: string) => void;
   onSelectSnapshot: (snapshotId: string) => void;
@@ -114,7 +114,7 @@ function SnapshotPanelPill({
 }
 
 function formatLayoutModeLabel(
-  layoutMode: WorkspaceLayoutDemoState['mode'],
+  layoutMode: WorkspaceLayoutState['mode'],
   t: ReturnType<typeof useI18n>['t'],
 ) {
   if (layoutMode === 'columns') {
@@ -137,7 +137,7 @@ function formatLayoutModeLabel(
 }
 
 function formatFocusSlotLabel(
-  focusSlot: WorkspaceLayoutDemoState['focusSlot'],
+  focusSlot: WorkspaceLayoutState['focusSlot'],
   t: ReturnType<typeof useI18n>['t'],
 ) {
   return t(`workspaceLayout.slot.${focusSlot}`);
@@ -150,7 +150,7 @@ function formatSplitRatioLabel(splitRatio: number) {
   return `${primaryPercentage} / ${secondaryPercentage}`;
 }
 
-function formatLayoutSplitSummary(layout: WorkspaceLayoutDemoState) {
+function formatLayoutSplitSummary(layout: WorkspaceLayoutState) {
   const primarySplit = formatSplitRatioLabel(layout.splitRatio);
   const secondarySplit = formatSplitRatioLabel(layout.secondarySplitRatio ?? 0.5);
 

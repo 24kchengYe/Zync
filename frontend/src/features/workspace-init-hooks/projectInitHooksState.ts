@@ -1,8 +1,8 @@
-import type { Project } from './types/project';
+import type { Project } from '../../types/project';
 
 export type InitHookPanelKey = 'terminal' | 'explorer' | 'diff';
 
-export interface ProjectInitHooksDemoConfig {
+export interface ProjectInitHooksConfig {
   enabledByDefault: boolean;
   defaultPanels: InitHookPanelKey[];
 }
@@ -17,10 +17,11 @@ export interface ProjectInitHooksPreview {
 
 type ProjectInitHookSource = Pick<Project, 'build_script' | 'run_script' | 'open_ide_command'>;
 
-const STORAGE_KEY = 'zync-project-init-hooks-demo-v1';
+const STORAGE_KEY = 'zync-project-init-hooks-preview-v1';
+const LEGACY_STORAGE_KEYS = ['zync-project-init-hooks-demo-v1'];
 const ALLOWED_PANEL_KEYS: InitHookPanelKey[] = ['terminal', 'explorer', 'diff'];
 
-export const DEFAULT_PROJECT_INIT_HOOKS_DEMO_CONFIG: ProjectInitHooksDemoConfig = {
+export const DEFAULT_PROJECT_INIT_HOOKS_CONFIG: ProjectInitHooksConfig = {
   enabledByDefault: false,
   defaultPanels: [],
 };
@@ -36,37 +37,39 @@ function splitCommands(value?: string | null): string[] {
     .filter(Boolean);
 }
 
-function normalizeConfig(config?: Partial<ProjectInitHooksDemoConfig>): ProjectInitHooksDemoConfig {
+function normalizeConfig(config?: Partial<ProjectInitHooksConfig>): ProjectInitHooksConfig {
   const defaultPanels = Array.from(new Set((config?.defaultPanels || []).filter(isInitHookPanelKey)));
 
   return {
-    enabledByDefault: config?.enabledByDefault ?? DEFAULT_PROJECT_INIT_HOOKS_DEMO_CONFIG.enabledByDefault,
+    enabledByDefault: config?.enabledByDefault ?? DEFAULT_PROJECT_INIT_HOOKS_CONFIG.enabledByDefault,
     defaultPanels,
   };
 }
 
-function loadStoredConfigs(): Record<string, ProjectInitHooksDemoConfig> {
+function loadStoredConfigs(): Record<string, ProjectInitHooksConfig> {
   if (typeof window === 'undefined') {
     return {};
   }
 
   try {
-    const rawValue = window.localStorage.getItem(STORAGE_KEY);
+    const rawValue = [STORAGE_KEY, ...LEGACY_STORAGE_KEYS]
+      .map((storageKey) => window.localStorage.getItem(storageKey))
+      .find((value): value is string => Boolean(value));
     if (!rawValue) {
       return {};
     }
 
-    const parsed = JSON.parse(rawValue) as Record<string, Partial<ProjectInitHooksDemoConfig>>;
+    const parsed = JSON.parse(rawValue) as Record<string, Partial<ProjectInitHooksConfig>>;
     return Object.fromEntries(
       Object.entries(parsed).map(([projectId, config]) => [projectId, normalizeConfig(config)]),
     );
   } catch (error) {
-    console.error('[ProjectInitHooksDemoState] Failed to load demo config:', error);
+    console.error('[ProjectInitHooksState] Failed to load config:', error);
     return {};
   }
 }
 
-function saveStoredConfigs(configs: Record<string, ProjectInitHooksDemoConfig>) {
+function saveStoredConfigs(configs: Record<string, ProjectInitHooksConfig>) {
   if (typeof window === 'undefined') {
     return;
   }
@@ -74,16 +77,16 @@ function saveStoredConfigs(configs: Record<string, ProjectInitHooksDemoConfig>) 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(configs));
 }
 
-export function loadProjectInitHooksDemoConfig(projectId?: number | null): ProjectInitHooksDemoConfig {
+export function loadProjectInitHooksConfig(projectId?: number | null): ProjectInitHooksConfig {
   if (!projectId) {
-    return DEFAULT_PROJECT_INIT_HOOKS_DEMO_CONFIG;
+    return DEFAULT_PROJECT_INIT_HOOKS_CONFIG;
   }
 
   const configs = loadStoredConfigs();
-  return configs[String(projectId)] || DEFAULT_PROJECT_INIT_HOOKS_DEMO_CONFIG;
+  return configs[String(projectId)] || DEFAULT_PROJECT_INIT_HOOKS_CONFIG;
 }
 
-export function saveProjectInitHooksDemoConfig(projectId: number, config: ProjectInitHooksDemoConfig) {
+export function saveProjectInitHooksConfig(projectId: number, config: ProjectInitHooksConfig) {
   const configs = loadStoredConfigs();
   configs[String(projectId)] = normalizeConfig(config);
   saveStoredConfigs(configs);
@@ -91,7 +94,7 @@ export function saveProjectInitHooksDemoConfig(projectId: number, config: Projec
 
 export function buildProjectInitHooksPreview(
   project: ProjectInitHookSource | null | undefined,
-  config: ProjectInitHooksDemoConfig = DEFAULT_PROJECT_INIT_HOOKS_DEMO_CONFIG,
+  config: ProjectInitHooksConfig = DEFAULT_PROJECT_INIT_HOOKS_CONFIG,
 ): ProjectInitHooksPreview {
   const setupCommands = splitCommands(project?.build_script);
   const startupCommands = splitCommands(project?.run_script);

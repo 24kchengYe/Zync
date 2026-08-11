@@ -42,7 +42,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       }
     } catch (error) {
       if (error instanceof Error && get().error) {
-        // Already set above â€” re-throw so callers can react
+        // Already set above â€?re-throw so callers can react
         throw error;
       }
       set({ error: 'Failed to update config' });

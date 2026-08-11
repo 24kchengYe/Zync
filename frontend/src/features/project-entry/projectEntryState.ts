@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import type { Project } from './types/project';
-import type { Session } from './types/session';
-import { useSessionStore } from './stores/sessionStore';
-import { useNavigationStore } from './stores/navigationStore';
-import { API } from './utils/api';
+import type { Project } from '../../types/project';
+import type { Session } from '../../types/session';
+import { useSessionStore } from '../../stores/sessionStore';
+import { useNavigationStore } from '../../stores/navigationStore';
+import { API } from '../../utils/api';
 
 export type StartupEntryMode = 'home' | 'default-project' | 'default-workspace';
 export type ProjectFilter = 'all' | 'recent' | 'favorites' | 'bookmarks';
 
-export interface DemoState {
+export interface ProjectEntryState {
   favoriteProjectIds: number[];
   bookmarkProjectIds: number[];
   recentProjectIds: number[];
@@ -21,10 +21,11 @@ export interface DemoState {
   sidebarSearchQuery: string;
 }
 
-const STORAGE_KEY = 'zync-project-entry-demo';
+const STORAGE_KEY = 'zync-project-entry-preview';
+const LEGACY_STORAGE_KEYS = ['zync-project-entry-demo'];
 const MAX_RECENT_PROJECTS = 6;
 
-const DEFAULT_STATE: DemoState = {
+const DEFAULT_STATE: ProjectEntryState = {
   favoriteProjectIds: [],
   bookmarkProjectIds: [],
   recentProjectIds: [],
@@ -37,18 +38,20 @@ const DEFAULT_STATE: DemoState = {
   sidebarSearchQuery: '',
 };
 
-function loadDemoState(): DemoState {
+function loadProjectEntryState(): ProjectEntryState {
   if (typeof window === 'undefined') {
     return DEFAULT_STATE;
   }
 
   try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
+    const saved = [STORAGE_KEY, ...LEGACY_STORAGE_KEYS]
+      .map((storageKey) => window.localStorage.getItem(storageKey))
+      .find((value): value is string => Boolean(value));
     if (!saved) {
       return DEFAULT_STATE;
     }
 
-    const parsed = JSON.parse(saved) as Partial<DemoState>;
+    const parsed = JSON.parse(saved) as Partial<ProjectEntryState>;
     return {
       ...DEFAULT_STATE,
       ...parsed,
@@ -60,12 +63,12 @@ function loadDemoState(): DemoState {
       sidebarSearchQuery: parsed.sidebarSearchQuery ?? DEFAULT_STATE.sidebarSearchQuery,
     };
   } catch (error) {
-    console.error('[ProjectEntryState] Failed to load demo state:', error);
+    console.error('[ProjectEntryState] Failed to load state:', error);
     return DEFAULT_STATE;
   }
 }
 
-function saveDemoState(state: DemoState) {
+function saveProjectEntryState(state: ProjectEntryState) {
   if (typeof window === 'undefined') {
     return;
   }
@@ -73,7 +76,7 @@ function saveDemoState(state: DemoState) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-let demoStateCache = loadDemoState();
+let projectEntryStateCache = loadProjectEntryState();
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void) {
@@ -82,12 +85,12 @@ function subscribe(listener: () => void) {
 }
 
 function getSnapshot() {
-  return demoStateCache;
+  return projectEntryStateCache;
 }
 
-function updateStoredDemoState(updater: (state: DemoState) => DemoState) {
-  demoStateCache = updater(demoStateCache);
-  saveDemoState(demoStateCache);
+function updateStoredProjectEntryState(updater: (state: ProjectEntryState) => ProjectEntryState) {
+  projectEntryStateCache = updater(projectEntryStateCache);
+  saveProjectEntryState(projectEntryStateCache);
   listeners.forEach((listener) => listener());
 }
 
@@ -116,19 +119,19 @@ function groupSessionsByProject(sessions: Session[]) {
   return map;
 }
 
-export function useProjectEntryDemoData() {
+export function useProjectEntryData() {
   const sessions = useSessionStore((state) => state.sessions);
   const setActiveSession = useSessionStore((state) => state.setActiveSession);
   const navigateToProject = useNavigationStore((state) => state.navigateToProject);
   const navigateToProjectDashboard = useNavigationStore((state) => state.navigateToProjectDashboard);
   const navigateToSessions = useNavigationStore((state) => state.navigateToSessions);
-  const demoState = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const projectEntryState = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const patchDemoState = useCallback((updater: (state: DemoState) => DemoState) => {
-    updateStoredDemoState(updater);
+  const patchProjectEntryState = useCallback((updater: (state: ProjectEntryState) => ProjectEntryState) => {
+    updateStoredProjectEntryState(updater);
   }, []);
 
   const loadProjects = useCallback(async () => {
@@ -172,34 +175,34 @@ export function useProjectEntryDemoData() {
   }, [projects]);
 
   const defaultProjectSessions = useMemo(() => {
-    if (!demoState.defaultProjectId) {
+    if (!projectEntryState.defaultProjectId) {
       return [];
     }
 
-    return workspaceSessionsByProject.get(demoState.defaultProjectId) ?? [];
-  }, [demoState.defaultProjectId, workspaceSessionsByProject]);
+    return workspaceSessionsByProject.get(projectEntryState.defaultProjectId) ?? [];
+  }, [projectEntryState.defaultProjectId, workspaceSessionsByProject]);
 
   const recentProjects = useMemo(() => {
-    return demoState.recentProjectIds
+    return projectEntryState.recentProjectIds
       .map((projectId) => projects.find((project) => project.id === projectId))
       .filter((project): project is Project => Boolean(project));
-  }, [demoState.recentProjectIds, projects]);
+  }, [projectEntryState.recentProjectIds, projects]);
 
   const favoriteProjects = useMemo(() => {
-    return projects.filter((project) => demoState.favoriteProjectIds.includes(project.id));
-  }, [projects, demoState.favoriteProjectIds]);
+    return projects.filter((project) => projectEntryState.favoriteProjectIds.includes(project.id));
+  }, [projects, projectEntryState.favoriteProjectIds]);
 
   const bookmarkedProjects = useMemo(() => {
-    return projects.filter((project) => demoState.bookmarkProjectIds.includes(project.id));
-  }, [projects, demoState.bookmarkProjectIds]);
+    return projects.filter((project) => projectEntryState.bookmarkProjectIds.includes(project.id));
+  }, [projects, projectEntryState.bookmarkProjectIds]);
 
   const markProjectOpened = useCallback((projectId: number) => {
-    patchDemoState((current) => ({
+    patchProjectEntryState((current) => ({
       ...current,
       recentProjectIds: moveToFront(current.recentProjectIds, projectId),
       lastOpenedProjectId: projectId,
     }));
-  }, [patchDemoState]);
+  }, [patchProjectEntryState]);
 
   const activateProject = useCallback(async (project: Project) => {
     try {
@@ -236,45 +239,45 @@ export function useProjectEntryDemoData() {
   }, [activateProject, markProjectOpened, navigateToProjectDashboard]);
 
   const previewStartupEntry = useCallback(async () => {
-    if (demoState.restoreLastProject && demoState.lastOpenedProjectId) {
-      const lastProject = projects.find((project) => project.id === demoState.lastOpenedProjectId);
+    if (projectEntryState.restoreLastProject && projectEntryState.lastOpenedProjectId) {
+      const lastProject = projects.find((project) => project.id === projectEntryState.lastOpenedProjectId);
       if (lastProject) {
-        const workspaceId = demoState.defaultWorkspaceByProjectId[lastProject.id];
+        const workspaceId = projectEntryState.defaultWorkspaceByProjectId[lastProject.id];
         await openProject(lastProject, workspaceId);
         return;
       }
     }
 
-    if (demoState.startupEntryMode === 'home') {
+    if (projectEntryState.startupEntryMode === 'home') {
       await setActiveSession(null);
       navigateToSessions();
       return;
     }
 
-    const defaultProject = projects.find((project) => project.id === demoState.defaultProjectId);
+    const defaultProject = projects.find((project) => project.id === projectEntryState.defaultProjectId);
     if (!defaultProject) {
       return;
     }
 
-    if (demoState.startupEntryMode === 'default-workspace') {
-      const workspaceId = demoState.defaultWorkspaceByProjectId[defaultProject.id];
+    if (projectEntryState.startupEntryMode === 'default-workspace') {
+      const workspaceId = projectEntryState.defaultWorkspaceByProjectId[defaultProject.id];
       await openProject(defaultProject, workspaceId);
       return;
     }
 
     await openProject(defaultProject);
-  }, [demoState, navigateToSessions, openProject, projects, setActiveSession]);
+  }, [projectEntryState, navigateToSessions, openProject, projects, setActiveSession]);
 
   return {
     activeProjectId,
     bookmarkedProjects,
     defaultProjectSessions,
-    demoState,
+    projectEntryState,
     favoriteProjects,
     isLoading,
     openProject,
     openProjectDashboard,
-    patchDemoState,
+    patchProjectEntryState,
     previewStartupEntry,
     projects,
     recentProjects,
@@ -282,15 +285,15 @@ export function useProjectEntryDemoData() {
   };
 }
 
-export function useProjectEntryDemoState() {
-  const demoState = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+export function useProjectEntryState() {
+  const projectEntryState = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
-  const patchDemoState = useCallback((updater: (state: DemoState) => DemoState) => {
-    updateStoredDemoState(updater);
+  const patchProjectEntryState = useCallback((updater: (state: ProjectEntryState) => ProjectEntryState) => {
+    updateStoredProjectEntryState(updater);
   }, []);
 
   return {
-    demoState,
-    patchDemoState,
+    projectEntryState,
+    patchProjectEntryState,
   };
 }

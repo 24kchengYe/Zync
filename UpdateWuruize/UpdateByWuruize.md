@@ -1,98 +1,53 @@
 # UpdateByWuruize
 
-这是一份给 PR 使用的简版说明。  
-`UpdateWRZ.md` 继续保留完整增量流水和详细记录；这个文件只负责让别人快速看懂：
-- 改了什么
-- 它和现有模块怎么合并
-- 这次没有做什么
+这是一份给 PR 使用的简版说明。完整增量记录见 `UpdateWRZ.md`。
 
 ## 一句话概括
 
-这次更新把 Zync 的前端体验往“类 tmux 的多 Agent 工作台”方向推了一大步：入口更快、切换更快、状态更密、初始化更顺、快照和布局开始成形，但仍然保持前端优先，不把后端持久化和执行链路提前拉进来。
+本次更新把 Zync 的前端体验推进为更完整的“类 tmux 多 Agent 工作台”：更快进入项目、更快切换 workspace、更清楚观察项目状态，并补充批量控制预览、初始化钩子、Workspace View Snapshot、轻量布局和项目活动流。当前仍然坚持前端优先，未把后端持久化、批量执行器或新的 IPC 协议提前合入。
 
-## 改动模块包
+## 已完成的功能模块
 
-- `frontend/src/components/*`
-- `frontend/src/components/dashboard/*`
-- `frontend/src/components/panels/*`
-- `frontend/src/hooks/*`
-- `frontend/src/stores/*`
-- `frontend/src/types/*`
-- `frontend/src/utils/*`
-- `main/src/*`
-- `main/src/utils/__tests__/*`
-- `scripts/start-electron-dev.js`
-- `UpdateWuruize/*`
-- `docs/resume-project-packaging-cn.md`
+- 中文包与中英文切换：新增并持续补齐双语文案，覆盖新入口、状态面板、批量控制、初始化钩子、快照、布局和活动流。
+- 项目发现与默认入口：提供首页启动入口卡、Sidebar 项目筛选、项目上下文条，以及默认项目 / 默认 workspace 的前端状态。
+- Global Switcher：产品计划名仍是 Quick Switcher，前端显示为 Global Switcher，支持项目 / workspace 分组搜索、预览和跳转。
+- 状态面板：以项目汇总 + workspace 明细的方式观察运行中 Agent、等待输入、改动、失败、同步状态和 workspace 详情。
+- 命令广播 / 批量控制：位于状态面板内，当前仅做选择目标和动作预览；没有后端执行链路的按钮保持禁用并标记 Preview。
+- Workspace 初始化钩子：在 Project Settings 配置，在 New Workspace 弹窗展示摘要；当前 Default Panels 有可见前端效果，其余命令类 hook 仍是来源映射和摘要。
+- Workspace View Snapshot：保存 / 恢复单个 workspace 的视图面板状态和布局状态；不回滚代码、不回滚 Git、不恢复文件内容。
+- Layout：提供 slot 化轻量布局画布，支持单栏、左右、上下、上 1 下 2、四分布局，以及可拖动比例和 slot focus。
+- Project Activity Stream：状态面板内的项目级活动流，支持 Raw / Semantic / Summary 三种前端派生视图和 Markdown / JSON 导出。
 
-## 功能说明
+## 结构收敛
 
-### 1. 中文包与中英切换
+- 正式运行依赖的 TypeScript / React 模块已放入 `frontend/src/features/*` 或对应 `frontend/src/components/*` 目录。
+- `UpdateWuruize/` 只保留说明文档，不再存放正式运行依赖的前端源码。
+- 原先的 `*DemoState` 导出命名已收敛为 feature/domain 命名，例如 `workspaceLayoutState`、`workspaceSnapshotState`、`projectInitHooksState`。
+- 仍属于前端预览持久化的能力继续使用 localStorage；storage key 已从 demo 语义收敛为 preview 语义，并保留旧 key 读取兼容。
+- 跨包测试已从 `main/src/utils/__tests__` 迁移到对应前端 feature 的 `__tests__` 目录。
+- 大组件已做低风险拆分：Quick Switcher、Project Dashboard、Activity Stream、Create Session Dialog、Workspace Layout 的纯模型 / presentation helper 已移出主组件。
 
-- 这是什么：给整个产品提供统一的中英文切换入口，让核心操作、设置页、状态页和创建弹窗都能双语显示。
-- 怎么合并：它不是单独的新页面，而是贯穿现有导航、设置和各个工作流组件的文案层。
-- 这次的意义：后续新功能可以直接接入同一套双语体系，不再各自硬编码英文。
+## 后端 / IPC 边界
 
-### 2. 项目发现与默认入口
+- 本次 PR 不新增后端业务执行器。
+- 本次 PR 不新增 IPC 请求字段。
+- 本次 PR 不新增数据库 schema。
+- 批量停止、Git Status、运行测试、保存快照等批量动作当前不执行真实操作，也不会显示虚假的 queued / success。
+- main 包侧当前只保留开发稳定性、现有主进程配置 / 菜单 / panel 接线兼容和主进程自身测试相关内容；前端 feature 测试不再挂在 main 包下。
+- `main/src/services/__tests__/gitStatusManager.test.ts` 已更新为测试当前 fast plumbing 实现，不再测试已不存在的旧私有 helper。
 
-- 这是什么：解决“打开 Zync 后先去哪里”的问题，让用户尽快回到已有项目上下文。
-- 怎么合并：它和首页、侧边栏、项目选择器、默认项目/默认 workspace 逻辑合并，不是独立的孤立入口页。
-- 这次的意义：缩短启动后找项目、找 workspace 的时间。
+## 合并方式建议
 
-### 3. Global Switcher
+- 作为前端产品体验增量合入，后续再拆后端持久化、批量执行器、正式 snapshot 存储和 supervisor/activity bus。
+- 如果维护者希望继续压缩 PR，可以优先保留 `frontend/src/features/*`、状态面板、布局和快照相关文件，把纯文档或后续计划文档放到后续 PR。
 
-- 这是什么：全局搜索/跳转入口，用来快速切换项目和 workspace。
-- 怎么合并：产品计划名仍然是 `Quick Switcher`，但当前前端文案改成了 `Global Switcher`；它复用了历史 workspace 和收藏 workspace 的结果，而不是独立任务索引。
-- 这次的意义：把高频切换收敛到一个统一入口。
+## 验证命令
 
-### 4. 状态面板
-
-- 这是什么：项目级观察层，集中展示运行中的 Agent、workspace 状态、改动、失败、等待输入和同步情况。
-- 怎么合并：它和 `ProjectDashboard`、`DetailPanel`、`Batch Control`、`Project Activity Stream` 是同一个 dashboard 里的不同观察区，不是分散的多个页面。
-- 这次的意义：让 Zync 更像一个开发驾驶舱，而不是只看终端列表的壳子。
-
-### 5. 命令广播 / 批量控制
-
-- 这是什么：给多个 workspace 提供统一操作入口。
-- 怎么合并：它挂在状态面板里，和观察能力配套，不单独占一个独立主页面；当前动作按钮只做 Preview，不执行真实后端命令。
-- 这次的意义：在多 Agent 并行场景里，减少逐个 workspace 重复操作。
-
-### 6. Workspace 初始化钩子
-
-- 这是什么：新建 workspace 时默认带上的初始化动作和默认打开面板。
-- 怎么合并：V1 复用现有项目字段映射，不新造后端执行系统。
-- 当前映射关系：
-  - `Build Script` -> `Setup Commands`
-  - `Run Commands` -> `Startup Commands`
-  - `Open IDE Command` -> `Auto-open IDE`
-  - `Default Panels` -> V1 新增的前端 demo 配置
-- 这次的意义：把“新建工作位后要做什么”前置成可见配置。
-
-### 7. Workspace View Snapshot
-
-- 这是什么：保存并恢复单个 workspace 的工作面板视图状态。
-- 怎么合并：它和现有 panel 系统一起工作，但目前只保存前端 view state 和布局状态，不回滚代码、不回滚 Git。
-- 这次的意义：让 workspace 从“临时页面”变成“可暂存、可恢复的工作现场”。
-
-### 8. 布局系统
-
-- 这是什么：给 workspace 中间区域提供轻量的 slot 布局能力。
-- 怎么合并：当前是 slot 化的轻量版，不是完整 split tree；它和 terminal、detail panel 还保持边界。
-- 这次的意义：让一个 workspace 能更像真正的工作台，而不只是 tab 切换器。
-
-## 合并边界
-
-- 这次没有把 workspace grouping、Control Center、Recipe、多仓库 workspace、只读共享/观战模式拉进来。
-- `Snapshot / Restore` 当前只做 workspace view 级别，不是代码回滚。
-- `Init Hooks` 当前是前端原型和摘要层，不是正式后端执行器。
-- `Layout` 当前是轻量版，不是完整 tmux pane tree。
-
-## 验证
-
+- `pnpm --filter frontend typecheck`
+- `pnpm --filter frontend test`
 - `pnpm typecheck`
+- `pnpm lint`，通过但保留仓库既有 warnings
 - `pnpm --filter frontend build`
-- `pnpm --filter main exec vitest run src/utils/__tests__/workspaceLayoutDemoState.test.ts src/utils/__tests__/workspaceSnapshotDemoState.test.ts src/utils/__tests__/projectActivityStreamDemoState.test.ts src/utils/__tests__/projectActivityStreamViewState.test.ts src/utils/__tests__/workspaceDashboardDetailState.test.ts src/utils/__tests__/workspaceLayoutSurfaceClasses.test.ts src/utils/__tests__/streamErrorGuards.test.ts`
-
-## 给 PR 的简短介绍
-
-这次 PR 主要把 Zync 的前端工作台体验收口成一个更完整的多 Agent 工作面：入口、切换、状态、批量控制、初始化钩子、快照和轻量布局都已经接上，但后端持久化和执行链路仍保持不动，方便下一阶段继续推进。
+- `pnpm --filter main exec vitest run`
+- `pnpm run build:main`
+- `pnpm electron-dev`，Windows 开发版启动级检查通过，日志显示窗口创建成功；完整 UI 点击流建议由 reviewer 人工确认

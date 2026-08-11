@@ -1,12 +1,12 @@
-import type { Session } from './types/session';
+import type { Session } from '../../types/session';
 import {
   getActivityAgentLabel,
   getLatestSessionSummary,
-} from './WorkspaceDashboardDetailState';
+} from '../project-dashboard/workspaceDashboardDetailState';
 import type {
   ProjectActivityRuntimeStatus,
   ProjectActivityStreamEntry,
-} from './ProjectActivityStreamDemoState';
+} from './projectActivityStreamState';
 
 export type ProjectActivityStreamView = 'raw' | 'semantic' | 'summary';
 export type ProjectActivitySummarySignal = 'summary' | 'semantic' | 'raw' | 'none';

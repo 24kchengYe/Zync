@@ -18,7 +18,7 @@ import { useConfigStore } from '../stores/configStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { API } from '../utils/api';
 import { Dropdown } from './ui/Dropdown';
-import { StartupEntryCard } from '../ProjectEntryWidgets';
+import { StartupEntryCard } from '../features/project-entry/ProjectEntryWidgets';
 import {
   LANGUAGE_OPTIONS,
   getSessionStatusLabel,

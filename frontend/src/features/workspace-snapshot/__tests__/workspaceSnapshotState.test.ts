@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import type { ToolPanel } from '../../../../shared/types/panels';
+import type { ToolPanel } from '../../../../../shared/types/panels';
 import {
   buildWorkspaceSnapshotRestorePreview,
   createWorkspaceSnapshotRecord,
@@ -8,7 +8,7 @@ import {
   loadWorkspaceSnapshots,
   type CreateWorkspaceSnapshotInput,
   type WorkspaceSnapshotRecord,
-} from '../../../../frontend/src/WorkspaceSnapshotDemoState';
+} from '../workspaceSnapshotState';
 
 function createPanel(overrides: Partial<ToolPanel> & Pick<ToolPanel, 'id' | 'sessionId' | 'type' | 'title'>): ToolPanel {
   return {

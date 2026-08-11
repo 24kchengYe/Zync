@@ -18,7 +18,7 @@ import {
   getWorkspaceCountLabel,
   useI18n,
 } from '../I18nContext';
-import { useProjectEntryDemoState } from '../ProjectEntryState';
+import { useProjectEntryState } from '../features/project-entry/projectEntryState';
 
 
 
@@ -28,7 +28,7 @@ interface ProjectSessionListProps {
 
 export function ProjectSessionList({ sessionSortAscending }: ProjectSessionListProps) {
   const { t } = useI18n();
-  const { demoState } = useProjectEntryDemoState();
+  const { projectEntryState } = useProjectEntryState();
   const [projects, setProjects] = useState<Project[]>([]);
   const [expandedProjects, setExpandedProjects] = useState<Set<number>>(new Set());
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -96,7 +96,7 @@ export function ProjectSessionList({ sessionSortAscending }: ProjectSessionListP
     return map;
   }, [sessions, sessionSortAscending]);
 
-  const normalizedSidebarSearchQuery = demoState.sidebarSearchQuery.trim().toLowerCase();
+  const normalizedSidebarSearchQuery = projectEntryState.sidebarSearchQuery.trim().toLowerCase();
 
   // Flat list of all visible sessions (for hotkey mapping)
   const allVisibleSessions = useMemo(() => {

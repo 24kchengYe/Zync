@@ -6,8 +6,8 @@ import {
   getLatestSessionSummary,
   resolveSelectedWorkspaceId,
   type WorkspaceDashboardRowLike,
-} from '../../../../frontend/src/WorkspaceDashboardDetailState';
-import type { Session } from '../../../../frontend/src/types/session';
+} from '../workspaceDashboardDetailState';
+import type { Session } from '../../../types/session';
 
 function createWorkspaceRow(
   overrides: Partial<WorkspaceDashboardRowLike> & Pick<WorkspaceDashboardRowLike, 'sessionId' | 'workspaceLabel'>,

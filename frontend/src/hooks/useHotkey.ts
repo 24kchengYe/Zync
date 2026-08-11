@@ -5,7 +5,7 @@ import { useHotkeyStore, type HotkeyDefinition } from '../stores/hotkeyStore';
  * Register a global hotkey. The shortcut is active while the component is mounted.
  *
  * IMPORTANT: Always call this hook unconditionally at the top level of your component.
- * Never wrap it in an if/else or conditional block â€” React hooks must be called in
+ * Never wrap it in an if/else or conditional block â€?React hooks must be called in
  * the same order every render. Use the `enabled` callback to conditionally disable
  * the shortcut instead.
  *

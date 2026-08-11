@@ -63,7 +63,7 @@ export interface AppConfig {
   language?: 'en' | 'zh';
   // User-defined custom commands for the Add Tool picker
   customCommands?: CustomCommand[];
-  // Terminal shortcuts â€” hotkey-triggered clipboard paste snippets
+  // Terminal shortcuts â€?hotkey-triggered clipboard paste snippets
   terminalShortcuts?: TerminalShortcut[];
   // Preferred shell for terminal sessions on Windows
   preferredShell?: 'auto' | 'gitbash' | 'powershell' | 'pwsh' | 'cmd';

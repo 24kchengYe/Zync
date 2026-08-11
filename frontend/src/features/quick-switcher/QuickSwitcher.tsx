@@ -10,280 +10,37 @@ import {
   Star,
   Workflow,
 } from 'lucide-react';
-import { Modal } from './components/ui/Modal';
-import { Input } from './components/ui/Input';
-import { Button } from './components/ui/Button';
-import { Kbd } from './components/ui/Kbd';
-import { useNavigationStore } from './stores/navigationStore';
-import { useSessionHistoryStore } from './stores/sessionHistoryStore';
-import { useSessionStore } from './stores/sessionStore';
-import { API } from './utils/api';
-import { cn } from './utils/cn';
-import type { Project } from './types/project';
-import type { ClaudeJsonMessage, Session } from './types/session';
-import { getWorkspaceCountLabel, useI18n } from './I18nContext';
+import { Modal } from '../../components/ui/Modal';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
+import { Kbd } from '../../components/ui/Kbd';
+import { useNavigationStore } from '../../stores/navigationStore';
+import { useSessionHistoryStore } from '../../stores/sessionHistoryStore';
+import { useSessionStore } from '../../stores/sessionStore';
+import { API } from '../../utils/api';
+import { cn } from '../../utils/cn';
+import type { Project } from '../../types/project';
+import type { Session } from '../../types/session';
+import { getWorkspaceCountLabel, useI18n } from '../../I18nContext';
+import {
+  GROUP_ORDER,
+  buildListRows,
+  extractSessionSummary,
+  formatRelativeTime,
+  getBranchName,
+  getMessageText,
+  getSessionStatusLabel,
+  getStatusTone,
+  normalizeSearch,
+  scoreFields,
+  type ResultGroup,
+  type ResultItem,
+} from './quickSwitcherModel';
 
-interface QuickSwitcherDemoProps {
+interface QuickSwitcherProps {
   isOpen: boolean;
   onClose: () => void;
   projects: Project[];
-}
-
-type ResultGroup = 'recent' | 'favorites' | 'projects' | 'workspaces';
-
-interface ResultItem {
-  id: string;
-  type: 'project' | 'workspace';
-  group: ResultGroup;
-  score: number;
-  title: string;
-  subtitle: string;
-  description?: string;
-  project?: Project;
-  session?: Session;
-  badges: Array<'recent' | 'favorite' | 'active-project' | 'active-workspace'>;
-}
-
-type ListRow =
-  | { type: 'header'; group: ResultGroup }
-  | { type: 'item'; item: ResultItem; flatIndex: number };
-
-const GROUP_ORDER: ResultGroup[] = ['recent', 'favorites', 'projects', 'workspaces'];
-
-function normalizeSearch(value: string) {
-  return value.trim().toLowerCase();
-}
-
-function getBranchName(session: Session) {
-  return session.worktreePath?.replace(/\\/g, '/').split('/').pop() || '';
-}
-
-function scoreField(field: string, query: string) {
-  if (!field) {
-    return -1;
-  }
-
-  const normalizedField = field.toLowerCase();
-  if (normalizedField === query) {
-    return 120;
-  }
-
-  if (normalizedField.startsWith(query)) {
-    return 92;
-  }
-
-  const substringIndex = normalizedField.indexOf(query);
-  if (substringIndex >= 0) {
-    return Math.max(40, 80 - substringIndex);
-  }
-
-  let queryIndex = 0;
-  for (let i = 0; i < normalizedField.length && queryIndex < query.length; i += 1) {
-    if (normalizedField[i] === query[queryIndex]) {
-      queryIndex += 1;
-    }
-  }
-
-  return queryIndex === query.length ? 24 : -1;
-}
-
-function scoreFields(fields: string[], query: string, bonus: number = 0) {
-  if (!query) {
-    return bonus;
-  }
-
-  const scores = fields.map((field) => scoreField(field, query)).filter((score) => score >= 0);
-  if (scores.length === 0) {
-    return -1;
-  }
-
-  return Math.max(...scores) + bonus;
-}
-
-function stripAnsi(value: string) {
-  const escapeCharacter = String.fromCharCode(27);
-  const ansiPattern = new RegExp(`${escapeCharacter}\\[[0-9;]*m`, 'g');
-  return value.replace(ansiPattern, '');
-}
-
-function cleanPreviewText(value: string | null | undefined) {
-  if (!value) {
-    return null;
-  }
-
-  const cleaned = stripAnsi(value).replace(/\s+/g, ' ').trim();
-  if (!cleaned) {
-    return null;
-  }
-
-  return cleaned.length > 180 ? `${cleaned.slice(0, 177)}...` : cleaned;
-}
-
-function extractTextContent(content: unknown): string | null {
-  if (!content) {
-    return null;
-  }
-
-  if (typeof content === 'string') {
-    return cleanPreviewText(content);
-  }
-
-  if (Array.isArray(content)) {
-    for (const item of content) {
-      if (!item || typeof item !== 'object') {
-        continue;
-      }
-
-      const textValue =
-        'text' in item && typeof item.text === 'string'
-          ? item.text
-          : 'content' in item && typeof item.content === 'string'
-            ? item.content
-            : null;
-
-      const cleaned = cleanPreviewText(textValue);
-      if (cleaned) {
-        return cleaned;
-      }
-    }
-  }
-
-  return null;
-}
-
-function extractSessionSummary(session: Session) {
-  const reversedMessages = [...session.jsonMessages].reverse();
-  for (const message of reversedMessages) {
-    const candidates = [
-      typeof message.summary === 'string' ? message.summary : null,
-      typeof message.text === 'string' ? message.text : null,
-      typeof message.result === 'string' ? message.result : null,
-      extractTextContent(message.content),
-      extractTextContent(message.message?.content),
-      typeof message.raw_output === 'string' ? message.raw_output : null,
-    ];
-
-    for (const candidate of candidates) {
-      const cleaned = cleanPreviewText(candidate);
-      if (cleaned) {
-        return cleaned;
-      }
-    }
-  }
-
-  const reversedOutput = [...session.output].reverse();
-  for (const line of reversedOutput) {
-    const cleaned = cleanPreviewText(line);
-    if (cleaned) {
-      return cleaned;
-    }
-  }
-
-  return null;
-}
-
-function formatRelativeTime(value?: string) {
-  if (!value) {
-    return '--';
-  }
-
-  const timestamp = new Date(value).getTime();
-  if (Number.isNaN(timestamp)) {
-    return '--';
-  }
-
-  const diffMs = Date.now() - timestamp;
-  if (diffMs < 60_000) {
-    return '<1m';
-  }
-
-  const diffMinutes = Math.floor(diffMs / 60_000);
-  if (diffMinutes < 60) {
-    return `${diffMinutes}m`;
-  }
-
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) {
-    return `${diffHours}h`;
-  }
-
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d`;
-}
-
-function getSessionStatusLabel(session: Session, language: 'en' | 'zh') {
-  const labels = {
-    en: {
-      initializing: 'Initializing',
-      ready: 'Ready',
-      running: 'Running',
-      waiting: 'Waiting',
-      stopped: 'Stopped',
-      completed_unviewed: 'Completed',
-      error: 'Error',
-    },
-    zh: {
-      initializing: '\u521d\u59cb\u5316\u4e2d',
-      ready: '\u5c31\u7eea',
-      running: '\u8fd0\u884c\u4e2d',
-      waiting: '\u7b49\u5f85\u4e2d',
-      stopped: '\u5df2\u505c\u6b62',
-      completed_unviewed: '\u5df2\u5b8c\u6210',
-      error: '\u5f02\u5e38',
-    },
-  } as const;
-
-  return labels[language][session.status] ?? session.status;
-}
-
-function getStatusTone(session: Session) {
-  if (session.status === 'running' || session.status === 'initializing') {
-    return 'success';
-  }
-
-  if (session.status === 'waiting') {
-    return 'warning';
-  }
-
-  if (session.status === 'error') {
-    return 'danger';
-  }
-
-  return 'neutral';
-}
-
-function buildListRows(groupedResults: Array<{ group: ResultGroup; items: ResultItem[] }>) {
-  const rows: ListRow[] = [];
-  let flatIndex = 0;
-
-  for (const group of groupedResults) {
-    rows.push({ type: 'header', group: group.group });
-    for (const item of group.items) {
-      rows.push({
-        type: 'item',
-        item,
-        flatIndex,
-      });
-      flatIndex += 1;
-    }
-  }
-
-  return {
-    rows,
-    resultCount: flatIndex,
-  };
-}
-
-function getMessageText(message: ClaudeJsonMessage) {
-  return cleanPreviewText(
-    typeof message.summary === 'string'
-      ? message.summary
-      : typeof message.text === 'string'
-        ? message.text
-        : typeof message.result === 'string'
-          ? message.result
-          : null,
-  );
 }
 
 function PreviewField({
@@ -327,11 +84,11 @@ function PreviewBadge({
   );
 }
 
-export function QuickSwitcherDemo({
+export function QuickSwitcher({
   isOpen,
   onClose,
   projects,
-}: QuickSwitcherDemoProps) {
+}: QuickSwitcherProps) {
   const { language, t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);

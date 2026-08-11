@@ -20,7 +20,7 @@ import { API } from '../utils/api';
 import type { Project } from '../types/project';
 import type { Session } from '../types/session';
 import { getWorkspaceCountLabel, useI18n } from '../I18nContext';
-import { SidebarProjectSearchPanel } from '../ProjectEntryWidgets';
+import { SidebarProjectSearchPanel } from '../features/project-entry/ProjectEntryWidgets';
 
 // --- Collapsed sidebar tooltip content ---
 
@@ -308,7 +308,7 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
           className="bg-surface-primary text-text-primary h-full flex flex-col flex-shrink-0 border-r border-border-primary"
           style={{ width: '48px' }}
         >
-          {/* Drag handle for window (not needed on macOS â€” handled by App-level spacer) */}
+          {/* Drag handle for window (not needed on macOS â€?handled by App-level spacer) */}
           {!isMac() && (
             <div className="h-3 flex-shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
           )}
@@ -418,7 +418,7 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
         className="bg-surface-primary text-text-primary h-full flex flex-col relative flex-shrink-0 border-r border-border-primary"
         style={{ width: `${width}px` }}
       >
-        {/* Drag handle for window (not needed on macOS â€” handled by App-level spacer) */}
+        {/* Drag handle for window (not needed on macOS â€?handled by App-level spacer) */}
         {!isMac() && (
           <div className="h-3 flex-shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
         )}
@@ -541,7 +541,7 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
                 onClick={onAboutClick}
                 title={t('common.versionDetails')}
               >
-                v{version}{worktreeName && ` â€¢ ${worktreeName}`}{gitCommit && ` â€¢ ${gitCommit}`}
+                v{version}{worktreeName && ` â€?${worktreeName}`}{gitCommit && ` â€?${gitCommit}`}
               </div>
             </div>
           )}
@@ -705,7 +705,7 @@ export function Sidebar({ onHelpClick, onAboutClick, onSettingsClick, isSettings
                   <ul className="list-disc list-inside space-y-1 text-xs text-text-secondary">
                     <li>Focus on <strong>High Priority</strong> branches first</li>
                     <li>Numbers show commit count or file changes</li>
-                    <li>Star (â˜…) indicates counts above 9</li>
+                    <li>Star (â˜? indicates counts above 9</li>
                     <li>Gray indicators are low priority - often safe to remove</li>
                     <li>Click any indicator to view detailed diff</li>
                   </ul>

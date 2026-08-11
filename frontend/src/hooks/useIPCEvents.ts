@@ -106,7 +106,7 @@ export function useIPCEvents() {
 
       // Only log significant status changes in production
       if (data.gitStatus.state !== 'clean' || process.env.NODE_ENV === 'development') {
-        console.log(`[useIPCEvents] Git status: ${data.sessionId.substring(0, 8)} â†’ ${data.gitStatus.state}`);
+        console.log(`[useIPCEvents] Git status: ${data.sessionId.substring(0, 8)} â†?${data.gitStatus.state}`);
       }
       
       // Update the store and clear loading state

@@ -1,6 +1,6 @@
 import { FolderOpen, GitBranch, Layers3 } from 'lucide-react';
-import { useI18n } from './I18nContext';
-import type { TranslationKey } from './i18n';
+import { useI18n } from '../../I18nContext';
+import type { TranslationKey } from '../../i18n';
 
 interface ProjectContextBannerProps {
   projectName: string;

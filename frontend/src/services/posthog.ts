@@ -22,7 +22,7 @@ export function initPostHog(config: PostHogConfig): void {
   if (needsInit) {
     posthog.init(apiKey, {
       api_host: host,
-      // Restrict autocapture to interactive elements only â€” prevents capturing
+      // Restrict autocapture to interactive elements only â€?prevents capturing
       // sensitive text content (code, prompts) from non-interactive UI areas
       autocapture: {
         css_selector_allowlist: [
@@ -52,7 +52,7 @@ export function initPostHog(config: PostHogConfig): void {
     return;
   }
 
-  // SDK already initialized with same key/host â€” just sync opt-in state
+  // SDK already initialized with same key/host â€?just sync opt-in state
   if (currentEnabled !== config.enabled) {
     if (config.enabled) {
       posthog.opt_in_capturing();

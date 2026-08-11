@@ -1,4 +1,4 @@
-import type { ToolPanel, ToolPanelType } from '../../shared/types/panels';
+import type { ToolPanel, ToolPanelType } from '../../../../shared/types/panels';
 
 export type WorkspaceLayoutMode =
   | 'single'
@@ -21,7 +21,7 @@ export const MIN_WORKSPACE_LAYOUT_SPLIT_RATIO = 0.25;
 export const MAX_WORKSPACE_LAYOUT_SPLIT_RATIO = 0.75;
 export const DEFAULT_WORKSPACE_LAYOUT_SPLIT_RATIO = 0.5;
 
-export interface WorkspaceLayoutDemoState {
+export interface WorkspaceLayoutState {
   mode: WorkspaceLayoutMode;
   slotAssignments: Partial<Record<WorkspaceLayoutSlot, string>>;
   splitRatio: number;
@@ -43,11 +43,11 @@ export interface WorkspacePersistenceIdentity {
   worktreePath?: string | null;
 }
 
-export interface LoadWorkspaceLayoutDemoStateOptions {
+export interface LoadWorkspaceLayoutStateOptions {
   legacyStorageKeys?: string[];
 }
 
-interface LegacyWorkspaceLayoutDemoState {
+interface LegacyWorkspaceLayoutState {
   mode: 'single' | 'columns' | 'rows';
   secondaryPanelId: string | null;
   splitRatio: number;
@@ -55,11 +55,14 @@ interface LegacyWorkspaceLayoutDemoState {
 }
 
 const STORAGE_KEYS = [
+  'zync-workspace-layout-v1',
+  'zync-workspace-layout-preview-v2',
+  'zync-workspace-layout-preview-v1',
   'zync-workspace-layout-demo-v2',
   'zync-workspace-layout-demo-v1',
 ] as const;
 
-export const DEFAULT_WORKSPACE_LAYOUT_DEMO_STATE: WorkspaceLayoutDemoState = {
+export const DEFAULT_WORKSPACE_LAYOUT_STATE: WorkspaceLayoutState = {
   mode: 'single',
   slotAssignments: {},
   splitRatio: DEFAULT_WORKSPACE_LAYOUT_SPLIT_RATIO,
@@ -244,7 +247,7 @@ function findPanelBySemanticHint(
 
 function resolvePanelAssignment(
   slot: WorkspaceLayoutSlot,
-  state: WorkspaceLayoutDemoState,
+  state: WorkspaceLayoutState,
   eligiblePanels: ToolPanel[],
   eligiblePanelIds: Set<string>,
   usedPanelIds: Set<string>,
@@ -269,8 +272,8 @@ function resolvePanelAssignment(
 }
 
 function normalizeStoredWorkspaceLayoutState(
-  state: Partial<WorkspaceLayoutDemoState | LegacyWorkspaceLayoutDemoState>,
-): WorkspaceLayoutDemoState {
+  state: Partial<WorkspaceLayoutState | LegacyWorkspaceLayoutState>,
+): WorkspaceLayoutState {
   const slotAssignments =
     'slotAssignments' in state && state.slotAssignments
       ? normalizeSlotAssignments(state.slotAssignments)
@@ -308,7 +311,7 @@ function normalizeStoredWorkspaceLayoutState(
   };
 }
 
-function loadAllWorkspaceLayoutStates(): Record<string, WorkspaceLayoutDemoState> {
+function loadAllWorkspaceLayoutStates(): Record<string, WorkspaceLayoutState> {
   if (typeof window === 'undefined') {
     return {};
   }
@@ -322,7 +325,7 @@ function loadAllWorkspaceLayoutStates(): Record<string, WorkspaceLayoutDemoState
 
       const parsed = JSON.parse(rawValue) as Record<
         string,
-        Partial<WorkspaceLayoutDemoState | LegacyWorkspaceLayoutDemoState>
+        Partial<WorkspaceLayoutState | LegacyWorkspaceLayoutState>
       >;
 
       return Object.fromEntries(
@@ -332,7 +335,7 @@ function loadAllWorkspaceLayoutStates(): Record<string, WorkspaceLayoutDemoState
         ]),
       );
     } catch (error) {
-      console.error('[WorkspaceLayoutDemoState] Failed to load state:', error);
+      console.error('[WorkspaceLayoutState] Failed to load state:', error);
     }
   }
 
@@ -340,7 +343,7 @@ function loadAllWorkspaceLayoutStates(): Record<string, WorkspaceLayoutDemoState
 }
 
 function saveAllWorkspaceLayoutStates(
-  statesBySession: Record<string, WorkspaceLayoutDemoState>,
+  statesBySession: Record<string, WorkspaceLayoutState>,
 ) {
   if (typeof window === 'undefined') {
     return;
@@ -349,10 +352,10 @@ function saveAllWorkspaceLayoutStates(
   window.localStorage.setItem(STORAGE_KEYS[0], JSON.stringify(statesBySession));
 }
 
-export function loadWorkspaceLayoutDemoState(
+export function loadWorkspaceLayoutState(
   workspaceStorageKey: string,
-  options?: LoadWorkspaceLayoutDemoStateOptions,
-): WorkspaceLayoutDemoState {
+  options?: LoadWorkspaceLayoutStateOptions,
+): WorkspaceLayoutState {
   const statesBySession = loadAllWorkspaceLayoutStates();
   const existingState = statesBySession[workspaceStorageKey];
   if (existingState) {
@@ -372,12 +375,12 @@ export function loadWorkspaceLayoutDemoState(
     }
   }
 
-  return DEFAULT_WORKSPACE_LAYOUT_DEMO_STATE;
+  return DEFAULT_WORKSPACE_LAYOUT_STATE;
 }
 
-export function saveWorkspaceLayoutDemoState(
+export function saveWorkspaceLayoutState(
   workspaceStorageKey: string,
-  state: WorkspaceLayoutDemoState,
+  state: WorkspaceLayoutState,
   panels?: ToolPanel[],
 ) {
   const statesBySession = loadAllWorkspaceLayoutStates();
@@ -416,12 +419,12 @@ export function getWorkspaceLayoutVisibleSlots(
   return ['slot1'];
 }
 
-export function getWorkspaceLayoutFocusSlots(state: WorkspaceLayoutDemoState) {
+export function getWorkspaceLayoutFocusSlots(state: WorkspaceLayoutState) {
   return getWorkspaceLayoutVisibleSlots(state.mode);
 }
 
 export function getNextWorkspaceLayoutFocusSlot(
-  state: WorkspaceLayoutDemoState,
+  state: WorkspaceLayoutState,
   direction: 'next' | 'prev' = 'next',
 ): WorkspaceLayoutFocusSlot {
   const focusSlots = getWorkspaceLayoutFocusSlots(state);
@@ -435,11 +438,11 @@ export function getNextWorkspaceLayoutFocusSlot(
   return focusSlots[nextIndex];
 }
 
-export function normalizeWorkspaceLayoutDemoState(
-  state: WorkspaceLayoutDemoState,
+export function normalizeWorkspaceLayoutState(
+  state: WorkspaceLayoutState,
   activePanelId: string | null,
   panels: ToolPanel[],
-): WorkspaceLayoutDemoState {
+): WorkspaceLayoutState {
   const eligiblePanels = getWorkspaceLayoutEligiblePanels(panels);
   const eligiblePanelIds = new Set(eligiblePanels.map((panel) => panel.id));
   const visibleSlots = getWorkspaceLayoutVisibleSlots(state.mode);
