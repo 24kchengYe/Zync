@@ -953,7 +953,7 @@ export const SessionView = memo(() => {
       },
       {
         id: 'push',
-        label: t('sessionView.branchAction.pushToRemote'), 
+        label: t('sessionView.branchAction.pushToRemote'),
         icon: Upload,
         onClick: hook.handleGitPush,
         disabled: hook.isMerging || activeSession.status === 'running' || activeSession.status === 'initializing',
