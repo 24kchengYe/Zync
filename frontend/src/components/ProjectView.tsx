@@ -11,10 +11,14 @@ import { PanelCreateOptions } from '../types/panelComponents';
 import { SessionProvider } from '../contexts/SessionContext';
 import { DetailPanel } from './DetailPanel';
 import { useResizable } from '../hooks/useResizable';
+import { ProjectContextBanner } from '../features/project-entry/ProjectContextBanner';
+import { useI18n } from '../I18nContext';
+import { useNavigationStore } from '../stores/navigationStore';
 
 interface ProjectViewProps {
   projectId: number;
   projectName: string;
+  projectPath: string;
   onGitPull: () => void;
   onGitPush: () => void;
   isMerging: boolean;
@@ -23,10 +27,14 @@ interface ProjectViewProps {
 export const ProjectView: React.FC<ProjectViewProps> = ({ 
   projectId, 
   projectName, 
+  projectPath,
   onGitPull, 
   onGitPush, 
   isMerging
 }) => {
+  const { t } = useI18n();
+  const projectEntryPanel = useNavigationStore((state) => state.projectEntryPanel);
+  const clearProjectEntryPanel = useNavigationStore((state) => state.clearProjectEntryPanel);
   const [mainRepoSessionId, setMainRepoSessionId] = useState<string | null>(null);
   const [mainRepoSession, setMainRepoSession] = useState<Session | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
@@ -69,13 +77,22 @@ export const ProjectView: React.FC<ProjectViewProps> = ({
 
         setPanels(mainRepoSessionId, loadedPanels);
 
-        // Pick default active: prefer explorer, then diff, then first panel
-        const fallback = loadedPanels.find(p => p.type === 'explorer')
+        const requestedPanel = projectEntryPanel
+          ? loadedPanels.find((panel) => panel.type === projectEntryPanel)
+          : null;
+
+        // Pick default active: respect requested panel first, then explorer, then diff, then first panel
+        const fallback = requestedPanel
+          || loadedPanels.find(p => p.type === 'explorer')
           || loadedPanels.find(p => p.type === 'diff')
           || loadedPanels[0];
 
         const activePanel = await panelApi.getActivePanel(mainRepoSessionId);
-        if (activePanel) {
+        if (projectEntryPanel && requestedPanel) {
+          setActivePanelInStore(mainRepoSessionId, requestedPanel.id);
+          await panelApi.setActivePanel(mainRepoSessionId, requestedPanel.id);
+          clearProjectEntryPanel();
+        } else if (activePanel) {
           setActivePanelInStore(mainRepoSessionId, activePanel.id);
         } else if (fallback) {
           setActivePanelInStore(mainRepoSessionId, fallback.id);
@@ -83,7 +100,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({
         }
       });
     }
-  }, [mainRepoSessionId, setPanels, setActivePanelInStore]);
+  }, [clearProjectEntryPanel, mainRepoSessionId, projectEntryPanel, setPanels, setActivePanelInStore]);
   
   // Get panels for current main repo session
   const sessionPanels = useMemo(
@@ -95,6 +112,35 @@ export const ProjectView: React.FC<ProjectViewProps> = ({
     () => sessionPanels.find(p => p.id === activePanels[mainRepoSessionId || '']),
     [sessionPanels, activePanels, mainRepoSessionId]
   );
+
+  useEffect(() => {
+    if (projectEntryPanel !== 'dashboard' || !mainRepoSessionId || sessionPanels.length === 0) {
+      return;
+    }
+
+    const dashboardPanel = sessionPanels.find((panel) => panel.type === 'dashboard');
+    if (!dashboardPanel) {
+      return;
+    }
+
+    if (currentActivePanel?.id === dashboardPanel.id) {
+      clearProjectEntryPanel();
+      return;
+    }
+
+    void (async () => {
+      setActivePanelInStore(mainRepoSessionId, dashboardPanel.id);
+      await panelApi.setActivePanel(mainRepoSessionId, dashboardPanel.id);
+      clearProjectEntryPanel();
+    })();
+  }, [
+    clearProjectEntryPanel,
+    currentActivePanel?.id,
+    mainRepoSessionId,
+    projectEntryPanel,
+    sessionPanels,
+    setActivePanelInStore,
+  ]);
   
   // Panel event handlers
   const handlePanelSelect = useCallback(
@@ -268,6 +314,12 @@ export const ProjectView: React.FC<ProjectViewProps> = ({
             detailPanelVisible={detailVisible}
           />
 
+          <ProjectContextBanner
+            projectName={projectName}
+            projectPath={projectPath}
+            mode="project"
+          />
+
           {/* Content area: center panels + right detail */}
           <div className="flex-1 flex flex-row min-h-0">
             {/* Center: panel content */}
@@ -276,7 +328,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-interactive mx-auto mb-4"></div>
-                    <p className="text-text-secondary">Loading panels...</p>
+                    <p className="text-text-secondary">{t('projectView.loadingPanels')}</p>
                   </div>
                 </div>
               ) : sessionPanels.length > 0 && currentActivePanel ? (
@@ -303,8 +355,8 @@ export const ProjectView: React.FC<ProjectViewProps> = ({
                 <div className="flex-1 flex items-center justify-center text-text-secondary">
                   <div className="text-center p-8">
                     <div className="text-4xl mb-4">⚡</div>
-                    <h2 className="text-xl font-semibold mb-2">No Active Panel</h2>
-                    <p className="text-sm">Add a tool panel to get started</p>
+                    <h2 className="text-xl font-semibold mb-2">{t('projectView.noActivePanel')}</h2>
+                    <p className="text-sm">{t('projectView.addToolToStart')}</p>
                   </div>
                 </div>
               )}
@@ -331,7 +383,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-interactive mx-auto mb-4"></div>
-            <p className="text-text-secondary">Loading project...</p>
+            <p className="text-text-secondary">{t('projectView.loadingProject')}</p>
           </div>
         </div>
       )}

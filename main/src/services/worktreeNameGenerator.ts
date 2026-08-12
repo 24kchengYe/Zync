@@ -1,8 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
+import type { AppConfig } from '../types/config';
 import { ConfigManager } from './configManager';
 import fs from 'fs/promises';
 import path from 'path';
+
+interface OpenRouterConfigOverrides {
+  openRouterApiKey?: string;
+  openRouterBaseUrl?: string;
+  openRouterModel?: string;
+}
 
 const NAME_PROMPT = `You are a developer assistant that generates concise, descriptive session names.
 
@@ -23,6 +30,7 @@ Examples:
 export class WorktreeNameGenerator {
   private anthropic: Anthropic | null = null;
   private openRouter: OpenAI | null = null;
+  private openRouterModel = 'anthropic/claude-haiku-4-5';
   private configManager: ConfigManager;
 
   constructor(configManager: ConfigManager) {
@@ -37,19 +45,20 @@ export class WorktreeNameGenerator {
 
   private initializeClients(): void {
     // Try OpenRouter first (from config or env)
-    const config = this.configManager.getConfig();
-    const openRouterKey = (config as any).openRouterApiKey || process.env.OPENAI_API_KEY;
-    const openRouterBaseUrl = (config as any).openRouterBaseUrl || process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1';
-    const openRouterModel = (config as any).openRouterModel || process.env.OPENAI_MODEL || 'anthropic/claude-haiku-4-5';
+    const config: AppConfig & OpenRouterConfigOverrides = this.configManager.getConfig();
+    const openRouterKey = config.openRouterApiKey || process.env.OPENAI_API_KEY;
+    const openRouterBaseUrl = config.openRouterBaseUrl || process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1';
+    const openRouterModel = config.openRouterModel || process.env.OPENAI_MODEL || 'anthropic/claude-haiku-4-5';
 
     if (openRouterKey) {
       this.openRouter = new OpenAI({
         apiKey: openRouterKey,
         baseURL: openRouterBaseUrl,
       });
-      (this as any)._openRouterModel = openRouterModel;
+      this.openRouterModel = openRouterModel;
     } else {
       this.openRouter = null;
+      this.openRouterModel = 'anthropic/claude-haiku-4-5';
     }
 
     // Anthropic as fallback
@@ -65,9 +74,8 @@ export class WorktreeNameGenerator {
     // Try OpenRouter first
     if (this.openRouter) {
       try {
-        const model = (this as any)._openRouterModel || 'anthropic/claude-haiku-4-5';
         const response = await this.openRouter.chat.completions.create({
-          model,
+          model: this.openRouterModel,
           max_tokens: 50,
           temperature: 0.3,
           messages: [

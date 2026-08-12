@@ -117,7 +117,7 @@ export function CloudWidget() {
     }
   }, [activeSessionId]);
 
-  // Hide widget entirely if cloud is not provisioned â€” only show once user
+  // Hide widget entirely if cloud is not provisioned â€?only show once user
   // has configured cloud through Settings
   if (!vmState || vmState.status === 'not_provisioned') {
     return null;
@@ -165,7 +165,7 @@ export function CloudWidget() {
         </div>
       )}
 
-      {/* Off state â€” start button */}
+      {/* Off state â€?start button */}
       {isOff && !loading && (
         <button
           onClick={handleStart}
@@ -177,7 +177,7 @@ export function CloudWidget() {
         </button>
       )}
 
-      {/* Tunnel disconnected, error, or unknown status â€” show reconnect (opens setup script which handles auth + tunnel) */}
+      {/* Tunnel disconnected, error, or unknown status â€?show reconnect (opens setup script which handles auth + tunnel) */}
       {needsReconnect && (
         <>
           {/* Only show stop button if VM is confirmed running */}
@@ -208,7 +208,7 @@ export function CloudWidget() {
         </>
       )}
 
-      {/* Running state with tunnel ready â€” stop + toggle */}
+      {/* Running state with tunnel ready â€?stop + toggle */}
       {tunnelReady && !loading && (
         <>
           <button

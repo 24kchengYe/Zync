@@ -4,6 +4,7 @@ import { ToggleField } from './ui/Toggle';
 import { CollapsibleCard } from './ui/CollapsibleCard';
 import { SettingsSection } from './ui/SettingsSection';
 import { Bell, BellOff, Volume2, VolumeX, Zap, Shield } from 'lucide-react';
+import { useI18n } from '../I18nContext';
 
 interface NotificationSettings {
   enabled: boolean;
@@ -20,6 +21,7 @@ interface NotificationSettingsProps {
 
 export function NotificationSettings({ settings, onUpdateSettings }: NotificationSettingsProps) {
   const [permissionStatus, setPermissionStatus] = useState<string>('unknown');
+  const { t } = useI18n();
 
   useEffect(() => {
     if ('Notification' in window) {
@@ -29,7 +31,7 @@ export function NotificationSettings({ settings, onUpdateSettings }: Notificatio
 
   const requestPermission = async () => {
     if (!('Notification' in window)) {
-      alert('This browser does not support notifications');
+      alert(t('notifications.permissions.browserUnsupported'));
       return;
     }
 
@@ -39,12 +41,12 @@ export function NotificationSettings({ settings, onUpdateSettings }: Notificatio
 
   const testNotification = () => {
     if (Notification.permission === 'granted') {
-      new Notification('Zync', {
-        body: 'This is a test notification! 🎉',
+      new Notification(t('common.appName'), {
+        body: t('notifications.permissions.testBody'),
         icon: '/favicon.ico',
       });
     } else {
-      alert('Please enable notifications first');
+      alert(t('notifications.permissions.enableFirst'));
     }
   };
 
@@ -58,9 +60,9 @@ export function NotificationSettings({ settings, onUpdateSettings }: Notificatio
 
   const getPermissionStatus = () => {
     switch (permissionStatus) {
-      case 'granted': return { text: 'Enabled', color: 'text-status-success' };
-      case 'denied': return { text: 'Denied', color: 'text-status-error' };
-      default: return { text: 'Not requested', color: 'text-status-warning' };
+      case 'granted': return { text: t('notifications.permissions.status.enabled'), color: 'text-status-success' };
+      case 'denied': return { text: t('notifications.permissions.status.denied'), color: 'text-status-error' };
+      default: return { text: t('notifications.permissions.status.notRequested'), color: 'text-status-warning' };
     }
   };
 
@@ -70,21 +72,21 @@ export function NotificationSettings({ settings, onUpdateSettings }: Notificatio
     <div className="space-y-6">
       {/* Browser Permissions */}
       <CollapsibleCard
-        title="Browser Permissions"
-        subtitle="Allow Pane to show desktop notifications"
+        title={t('notifications.permissions.title')}
+        subtitle={t('notifications.permissions.subtitle')}
         icon={getPermissionIcon()}
         defaultExpanded={true}
       >
         <SettingsSection
-          title="Notification Access"
-          description="Pane needs browser permission to show notifications when your sessions update"
+          title={t('notifications.permissions.access.title')}
+          description={t('notifications.permissions.access.description')}
           icon={getPermissionIcon()}
         >
           <div className="flex items-center justify-between p-4 bg-surface-secondary rounded-lg border border-border-secondary">
             <div className="flex items-center gap-3">
               {getPermissionIcon()}
               <div>
-                <span className="text-sm font-medium text-text-primary">Permission Status</span>
+                <span className="text-sm font-medium text-text-primary">{t('notifications.permissions.statusLabel')}</span>
                 <p className={`text-sm ${status.color} font-medium`}>
                   {status.text}
                 </p>
@@ -97,7 +99,7 @@ export function NotificationSettings({ settings, onUpdateSettings }: Notificatio
                   size="sm"
                   variant="primary"
                 >
-                  Enable Notifications
+                  {t('notifications.permissions.enableButton')}
                 </Button>
               )}
               {permissionStatus === 'granted' && (
@@ -106,7 +108,7 @@ export function NotificationSettings({ settings, onUpdateSettings }: Notificatio
                   size="sm"
                   variant="secondary"
                 >
-                  Test Notification
+                  {t('notifications.permissions.testButton')}
                 </Button>
               )}
             </div>
@@ -114,7 +116,7 @@ export function NotificationSettings({ settings, onUpdateSettings }: Notificatio
           {permissionStatus === 'denied' && (
             <div className="mt-3 p-3 bg-status-error/10 border border-status-error/20 rounded-lg">
               <p className="text-xs text-status-error">
-                Notifications are blocked. Please enable them in your browser settings and refresh Pane.
+                {t('notifications.permissions.blocked')}
               </p>
             </div>
           )}
@@ -123,61 +125,61 @@ export function NotificationSettings({ settings, onUpdateSettings }: Notificatio
 
       {/* Notification Preferences */}
       <CollapsibleCard
-        title="Notification Preferences"
-        subtitle="Customize when and how you receive notifications"
+        title={t('notifications.preferences.title')}
+        subtitle={t('notifications.preferences.subtitle')}
         icon={settings.enabled ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
         defaultExpanded={true}
       >
         <SettingsSection
-          title="Master Control"
-          description="Turn all notifications on or off"
+          title={t('notifications.master.title')}
+          description={t('notifications.master.description')}
           icon={settings.enabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
         >
           <ToggleField
-            label="Enable Notifications"
-            description="Show browser notifications for session events"
+            label={t('notifications.master.toggleLabel')}
+            description={t('notifications.master.toggleDescription')}
             checked={settings.enabled}
             onChange={(checked) => onUpdateSettings({ enabled: checked })}
           />
         </SettingsSection>
 
         <SettingsSection
-          title="Sound & Audio"
-          description="Control notification sounds"
+          title={t('notifications.sound.title')}
+          description={t('notifications.sound.description')}
           icon={settings.playSound ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
         >
           <ToggleField
-            label="Play notification sounds"
-            description="Play a subtle sound when notifications appear"
+            label={t('notifications.sound.toggleLabel')}
+            description={t('notifications.sound.toggleDescription')}
             checked={settings.playSound}
             onChange={(checked) => onUpdateSettings({ playSound: checked })}
           />
         </SettingsSection>
 
         <SettingsSection
-          title="Event Triggers"
-          description="Choose which session events should trigger notifications"
+          title={t('notifications.events.title')}
+          description={t('notifications.events.description')}
           icon={<Zap className="w-4 h-4" />}
           spacing="sm"
         >
           <div className="space-y-3">
             <ToggleField
-              label="Status changes"
-              description="When sessions start, stop, or change state"
+              label={t('notifications.events.statusChanges')}
+              description={t('notifications.events.statusChangesDescription')}
               checked={settings.notifyOnStatusChange}
               onChange={(checked) => onUpdateSettings({ notifyOnStatusChange: checked })}
             />
 
             <ToggleField
-              label="Input required"
-              description="When Claude is waiting for your response"
+              label={t('notifications.events.inputRequired')}
+              description={t('notifications.events.inputRequiredDescription')}
               checked={settings.notifyOnWaiting}
               onChange={(checked) => onUpdateSettings({ notifyOnWaiting: checked })}
             />
 
             <ToggleField
-              label="Task completion"
-              description="When sessions finish successfully"
+              label={t('notifications.events.taskCompletion')}
+              description={t('notifications.events.taskCompletionDescription')}
               checked={settings.notifyOnComplete}
               onChange={(checked) => onUpdateSettings({ notifyOnComplete: checked })}
             />

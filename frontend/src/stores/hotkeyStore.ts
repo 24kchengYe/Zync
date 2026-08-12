@@ -7,7 +7,7 @@
  * - Category-based organization for Help dialog grouping
  * - Search/filter functionality for Command Palette
  * - Conditional enabling via `enabled` callbacks checked on every keypress
- * - Platform-aware key normalization (Ctrl/Cmd â†’ 'mod')
+ * - Platform-aware key normalization (Ctrl/Cmd â†?'mod')
  * - Support for hiding alternative shortcuts from UI via `showInPalette`
  *
  * @example
@@ -64,7 +64,7 @@ interface HotkeyStore {
 
 // --- Key matching logic (module-level, not in store) ---
 
-// Canonical modifier order â€” MUST be identical in both normalize functions
+// Canonical modifier order â€?MUST be identical in both normalize functions
 const MODIFIER_ORDER = ['mod', 'alt', 'shift'] as const;
 
 function normalizeKeyEvent(e: KeyboardEvent): string {
@@ -73,9 +73,9 @@ function normalizeKeyEvent(e: KeyboardEvent): string {
   if (e.altKey) parts.push('alt');
   if (e.shiftKey) parts.push('shift');
   // parts is already in canonical order because we push in that order
-  // Use e.code for letters when alt is held â€” macOS Option key modifies e.key
+  // Use e.code for letters when alt is held â€?macOS Option key modifies e.key
   // (e.g. Option+A produces 'Ã¥' instead of 'a')
-  // Skip AltGr â€” on Windows/Linux international layouts AltGr sets both ctrlKey+altKey
+  // Skip AltGr â€?on Windows/Linux international layouts AltGr sets both ctrlKey+altKey
   // but is used for character input (e.g. AltGr+Q = '@' on German keyboards)
   const isAltGr = e.getModifierState('AltGraph');
   const altLetterMatch = e.altKey && !isAltGr && e.code.match(/^Key([A-Z])$/);
@@ -84,7 +84,7 @@ function normalizeKeyEvent(e: KeyboardEvent): string {
     : e.key.length === 1
       ? e.key.toLowerCase()
       : e.key;
-  // Use e.code for digits when shift is held â€” e.key is layout-dependent
+  // Use e.code for digits when shift is held â€?e.key is layout-dependent
   // (e.g. Shift+2 produces '@' on US, '"' on UK, different on AZERTY)
   const digitMatch = e.shiftKey && e.code.match(/^Digit(\d)$/);
   if (digitMatch) {
@@ -115,7 +115,7 @@ function normalizeHotkeyString(keys: string): string {
 }
 
 let listenerAttached = false;
-let lookupIndex: Map<string, string> = new Map(); // normalized keys â†’ hotkey id
+let lookupIndex: Map<string, string> = new Map(); // normalized keys â†?hotkey id
 
 function handleKeyDown(e: KeyboardEvent) {
   const target = e.target as HTMLElement;

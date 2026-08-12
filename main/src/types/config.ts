@@ -34,6 +34,8 @@ export interface AppConfig {
   stravuServerUrl?: string;
   // Theme preference
   theme?: 'light' | 'dark' | 'oled';
+  // Interface language
+  language?: 'en' | 'zh';
   // UI scale factor (0.75 to 1.5, default 1.0)
   uiScale?: number;
   // Notification settings
@@ -104,6 +106,7 @@ export interface UpdateConfigRequest {
   stravuApiKey?: string;
   stravuServerUrl?: string;
   theme?: 'light' | 'dark' | 'oled';
+  language?: 'en' | 'zh';
   uiScale?: number;
   notifications?: {
     enabled: boolean;

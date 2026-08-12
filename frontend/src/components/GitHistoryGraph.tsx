@@ -3,6 +3,7 @@ import { API } from '../utils/api';
 import { Loader2, GitCommitHorizontal, FileText, Plus, Minus, User, Clock, Hash, GitFork } from 'lucide-react';
 import { Tooltip } from './ui/Tooltip';
 import { CopyableField } from './ui/CopyableField';
+import { interpolateTranslation, useI18n } from '../I18nContext';
 
 interface GitGraphCommitData {
   hash: string;
@@ -28,6 +29,7 @@ interface GitHistoryGraphProps {
 }
 
 function CommitTooltipContent({ entry }: { entry: GitGraphCommitData }) {
+  const { t } = useI18n();
   const date = new Date(entry.committerDate);
   const fullDate = date.toLocaleDateString(undefined, {
     weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
@@ -35,7 +37,7 @@ function CommitTooltipContent({ entry }: { entry: GitGraphCommitData }) {
   });
 
   if (entry.hash === 'index') {
-    return <span className="text-[11px] text-status-warning/80 italic">Uncommitted changes</span>;
+    return <span className="text-[11px] text-status-warning/80 italic">{t('gitHistory.uncommittedChanges')}</span>;
   }
 
   const hasStats = entry.filesChanged != null && entry.filesChanged > 0;
@@ -47,7 +49,7 @@ function CommitTooltipContent({ entry }: { entry: GitGraphCommitData }) {
 
       <div className="border-t border-border-primary" />
 
-      {/* Metadata rows â€” click to copy */}
+      {/* Metadata rows â€?click to copy */}
       <div className="space-y-0.5 text-[10px]">
         <CopyableField icon={User} value={`${entry.author}${entry.authorEmail ? ` <${entry.authorEmail}>` : ''}`} />
         <CopyableField icon={Hash} value={entry.hash} mono />
@@ -64,7 +66,10 @@ function CommitTooltipContent({ entry }: { entry: GitGraphCommitData }) {
           <div className="flex items-center gap-3 text-[10px]">
             <span className="flex items-center gap-1 text-text-secondary">
               <FileText className="w-3 h-3 text-text-tertiary" />
-              {entry.filesChanged} {entry.filesChanged === 1 ? 'file' : 'files'}
+              {interpolateTranslation(t('gitHistory.filesChanged'), {
+                count: entry.filesChanged ?? 0,
+                label: entry.filesChanged === 1 ? t('gitHistory.fileLabel.one') : t('gitHistory.fileLabel.other'),
+              })}
             </span>
             {(entry.additions ?? 0) > 0 && (
               <span className="flex items-center gap-0.5 text-status-success">
@@ -134,6 +139,7 @@ const CommitRow = memo(function CommitRow({
 });
 
 export function GitHistoryGraph({ sessionId, baseBranch }: GitHistoryGraphProps) {
+  const { t } = useI18n();
   const [rawEntries, setRawEntries] = useState<GitGraphCommitData[]>([]);
   const [currentBranch, setCurrentBranch] = useState(baseBranch);
   const [loading, setLoading] = useState(true);
@@ -201,7 +207,7 @@ export function GitHistoryGraph({ sessionId, baseBranch }: GitHistoryGraphProps)
   if (error) {
     return (
       <div className="text-xs text-text-tertiary px-1 py-2">
-        Unable to load commit history
+        {t('gitHistory.loadError')}
       </div>
     );
   }
@@ -209,7 +215,7 @@ export function GitHistoryGraph({ sessionId, baseBranch }: GitHistoryGraphProps)
   if (rawEntries.length === 0) {
     return (
       <div className="text-xs text-text-tertiary px-1 py-2">
-        No commits yet
+        {t('gitHistory.noCommits')}
       </div>
     );
   }
@@ -227,7 +233,7 @@ export function GitHistoryGraph({ sessionId, baseBranch }: GitHistoryGraphProps)
       </div>
       {currentBranch && (
         <div className="text-[10px] text-text-tertiary px-1 pt-1.5 pb-0.5 font-mono truncate">
-          on {currentBranch}
+          {interpolateTranslation(t('gitHistory.onBranch'), { branch: currentBranch })}
         </div>
       )}
     </div>

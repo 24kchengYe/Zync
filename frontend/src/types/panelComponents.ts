@@ -1,4 +1,5 @@
 import { ToolPanel, ToolPanelType } from '../../../shared/types/panels';
+import type { WorkspaceLayoutMode } from '../features/workspace-layout/workspaceLayoutState';
 
 export type PanelContext = 'project' | 'worktree';
 
@@ -16,6 +17,8 @@ export interface PanelTabBarProps {
   context?: PanelContext;  // Optional context to filter available panels
   onToggleDetailPanel?: () => void;
   detailPanelVisible?: boolean;
+  layoutMode?: WorkspaceLayoutMode;
+  onLayoutModeChange?: (mode: WorkspaceLayoutMode) => void;
 }
 
 export interface PanelContainerProps {

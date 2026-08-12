@@ -10,12 +10,14 @@ import { EnhancedInput } from './ui/EnhancedInput';
 import { FieldWithTooltip } from './ui/FieldWithTooltip';
 import { Card } from './ui/Card';
 import { Folder, GitBranch, Hammer, Play } from 'lucide-react';
+import { useI18n } from '../I18nContext';
 
 interface ProjectSelectorProps {
   onProjectChange?: (project: Project) => void;
 }
 
 export default function ProjectSelector({ onProjectChange }: ProjectSelectorProps) {
+  const { t } = useI18n();
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -94,7 +96,7 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
 
       if (!response.success) {
         showError({
-          title: 'Failed to Create Project',
+          title: t('projectSelector.createErrorTitle'),
           error: response.error || 'An error occurred while creating the project.',
           details: response.details,
           command: response.command
@@ -120,7 +122,7 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
       const errorMessage = error instanceof Error ? error.message : 'An error occurred while creating the project.';
       const errorDetails = error instanceof Error ? error.stack : String(error);
       showError({
-        title: 'Failed to Create Project',
+        title: t('projectSelector.createErrorTitle'),
         error: errorMessage,
         details: errorDetails || ''
       });
@@ -160,14 +162,14 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
             className="flex-1 justify-between"
           >
             <span>
-              {activeProject ? activeProject.name : 'Select Project'}
+              {activeProject ? activeProject.name : t('projectSelector.selectProject')}
             </span>
             <ChevronDown className={`w-4 h-4 ml-2 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </Button>
           {activeProject && (
             <IconButton
               onClick={() => handleSettingsClick(activeProject)}
-              aria-label="Project Settings"
+              aria-label={t('projectSelector.projectSettings')}
               size="md"
               icon={<Settings className="w-4 h-4" />}
             />
@@ -210,7 +212,7 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
                     }}
                     size="sm"
                     className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Project Settings"
+                    aria-label={t('projectSelector.projectSettings')}
                     icon={<Settings className="w-4 h-4" />}
                   />
                 </div>
@@ -227,7 +229,7 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
                   className="w-full justify-start"
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Add Project
+                  {t('projectSelector.addProject')}
                 </Button>
               </div>
             </div>
@@ -246,19 +248,19 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
         }}
         size="lg"
       >
-        <ModalHeader title="Add New Project" icon={<Plus className="w-5 h-5" />} />
+        <ModalHeader title={t('projectSelector.addNewProject')} icon={<Plus className="w-5 h-5" />} />
         <ModalBody>
             <div className="space-y-8">
               {/* Project Info Section */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2 pb-2 border-b border-border-primary">
                   <Folder className="w-5 h-5 text-interactive" />
-                  <h3 className="text-heading-3 font-semibold text-text-primary">Project Information</h3>
+                  <h3 className="text-heading-3 font-semibold text-text-primary">{t('projectSelector.projectInformation')}</h3>
                 </div>
                 
                 <FieldWithTooltip
-                  label="Project Name"
-                  tooltip="A descriptive name for your project that will appear in the project selector."
+                  label={t('projectSelector.projectName.label')}
+                  tooltip={t('projectSelector.projectName.tooltip')}
                   required
                 >
                   <EnhancedInput
@@ -268,7 +270,7 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
                       setNewProject({ ...newProject, name: e.target.value });
                       if (showValidationErrors) setShowValidationErrors(false);
                     }}
-                    placeholder="Enter project name"
+                    placeholder={t('projectSelector.projectName.placeholder')}
                     size="lg"
                     fullWidth
                     required
@@ -277,8 +279,8 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
                 </FieldWithTooltip>
 
                 <FieldWithTooltip
-                  label="Repository Path"
-                  tooltip="Path to your git repository. This is where Pane will create worktrees for parallel development."
+                  label={t('projectSelector.repositoryPath.label')}
+                  tooltip={t('projectSelector.repositoryPath.tooltip')}
                   required
                 >
                   <div className="space-y-3">
@@ -290,7 +292,7 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
                         detectCurrentBranch(e.target.value);
                         if (showValidationErrors) setShowValidationErrors(false);
                       }}
-                      placeholder="/path/to/your/repository"
+                      placeholder={t('projectSelector.repositoryPath.placeholder')}
                       size="lg"
                       fullWidth
                       required
@@ -301,8 +303,8 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
                         type="button"
                         onClick={async () => {
                           const result = await API.dialog.openDirectory({
-                            title: 'Select Repository Directory',
-                            buttonLabel: 'Select',
+                            title: t('projectSelector.selectRepositoryDirectory'),
+                            buttonLabel: t('common.select'),
                           });
                           if (result.success && result.data) {
                             setNewProject({ ...newProject, path: result.data });
@@ -312,7 +314,7 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
                         variant="secondary"
                         size="sm"
                       >
-                        Browse
+                        {t('common.browse')}
                       </Button>
                     </div>
                   </div>
@@ -323,18 +325,18 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
               <div className="space-y-6">
                 <div className="flex items-center gap-2 pb-2 border-b border-border-primary">
                   <GitBranch className="w-5 h-5 text-interactive" />
-                  <h3 className="text-heading-3 font-semibold text-text-primary">Git Information</h3>
+                  <h3 className="text-heading-3 font-semibold text-text-primary">{t('projectSelector.gitInformation')}</h3>
                 </div>
                 
                 <FieldWithTooltip
-                  label="Main Branch"
-                  tooltip="The main branch of your repository. Pane will automatically detect this from your git configuration."
+                  label={t('projectSelector.mainBranch.label')}
+                  tooltip={t('projectSelector.mainBranch.tooltip')}
                 >
                   <Card variant="bordered" padding="md" className="text-text-secondary bg-surface-secondary">
                     <div className="flex items-center gap-2">
                       <GitBranch className="w-4 h-4" />
                       <span className="font-mono">
-                        {detectedBranch || (newProject.path ? 'Detecting...' : 'Select a repository path first')}
+                        {detectedBranch || (newProject.path ? t('projectSelector.mainBranch.detecting') : t('projectSelector.mainBranch.selectPathFirst'))}
                       </span>
                     </div>
                   </Card>
@@ -345,12 +347,12 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
               <div className="space-y-6">
                 <div className="flex items-center gap-2 pb-2 border-b border-border-primary">
                   <Play className="w-5 h-5 text-interactive" />
-                  <h3 className="text-heading-3 font-semibold text-text-primary">Optional Scripts</h3>
+                  <h3 className="text-heading-3 font-semibold text-text-primary">{t('projectSelector.optionalScripts')}</h3>
                 </div>
                 
                 <FieldWithTooltip
-                  label="Build Script"
-                  tooltip="Command to build your project. This runs automatically before each Claude Code session starts."
+                  label={t('projectSelector.buildScript.label')}
+                  tooltip={t('projectSelector.buildScript.tooltip')}
                 >
                   <EnhancedInput
                     type="text"
@@ -364,8 +366,8 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
                 </FieldWithTooltip>
 
                 <FieldWithTooltip
-                  label="Run Script"
-                  tooltip="Command to start your development server. You can run this manually from the Terminal view during sessions."
+                  label={t('projectSelector.runScript.label')}
+                  tooltip={t('projectSelector.runScript.tooltip')}
                 >
                   <EnhancedInput
                     type="text"
@@ -392,7 +394,7 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
             variant="ghost"
             size="md"
           >
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             onClick={() => {
@@ -407,7 +409,7 @@ export default function ProjectSelector({ onProjectChange }: ProjectSelectorProp
             size="md"
             className={(!newProject.name || !newProject.path) ? 'border-status-error border-2' : ''}
           >
-            Create Project
+            {t('projectSelector.createProject')}
           </Button>
         </ModalFooter>
       </Modal>

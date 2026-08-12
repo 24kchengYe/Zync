@@ -62,7 +62,7 @@ interface SessionStore {
   // Performance cleanup methods
   cleanupInactiveSessions: () => void;
 
-  // Spotlight tracking (projectId â†’ sessionId)
+  // Spotlight tracking (projectId â†?sessionId)
   activeSpotlights: Map<number, string>;
   setSpotlightActive: (sessionId: string, projectId: number, active: boolean) => void;
   isSpotlightActive: (sessionId: string) => boolean;
@@ -179,7 +179,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     // Emit session-switched event for cleanup
     window.dispatchEvent(new CustomEvent('session-switched', { detail: { sessionId } }));
 
-    // Notify backend in background (don't await â€” non-blocking)
+    // Notify backend in background (don't await â€?non-blocking)
     window.electronAPI.invoke('sessions:set-active-session', sessionId).catch(() => {});
 
     // First check if the session is already in our local store

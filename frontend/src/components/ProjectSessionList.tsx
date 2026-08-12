@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { ChevronDown, ChevronRight, Plus, Minus, GitBranch, GitFork, MoreHorizontal, Home, Archive, ArchiveRestore, Pencil, Play, Trash2, Settings as SettingsIcon, FolderPlus, Loader2, Clock, FileText, GitPullRequest, FolderOpen } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Minus, GitBranch, GitFork, MoreHorizontal, Home, Archive, ArchiveRestore, Pencil, Play, Trash2, LayoutDashboard, FolderPlus, Loader2, Clock, FileText, GitPullRequest, FolderOpen } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
 import { useNavigationStore } from '../stores/navigationStore';
 import { useHotkeyStore } from '../stores/hotkeyStore';
@@ -13,6 +13,12 @@ import { API } from '../utils/api';
 import { cycleIndex } from '../utils/arrayUtils';
 import type { Session, GitStatus } from '../types/session';
 import type { Project } from '../types/project';
+import {
+  getDeleteProjectConfirmText,
+  getWorkspaceCountLabel,
+  useI18n,
+} from '../I18nContext';
+import { useProjectEntryState } from '../features/project-entry/projectEntryState';
 
 
 
@@ -21,6 +27,8 @@ interface ProjectSessionListProps {
 }
 
 export function ProjectSessionList({ sessionSortAscending }: ProjectSessionListProps) {
+  const { t } = useI18n();
+  const { projectEntryState } = useProjectEntryState();
   const [projects, setProjects] = useState<Project[]>([]);
   const [expandedProjects, setExpandedProjects] = useState<Set<number>>(new Set());
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -37,7 +45,7 @@ export function ProjectSessionList({ sessionSortAscending }: ProjectSessionListP
   const activeSessionId = useSessionStore(s => s.activeSessionId);
   const setActiveSession = useSessionStore(s => s.setActiveSession);
   const navigateToSessions = useNavigationStore(s => s.navigateToSessions);
-  const navigateToProject = useNavigationStore(s => s.navigateToProject);
+  const navigateToProjectDashboard = useNavigationStore(s => s.navigateToProjectDashboard);
 
   // Hotkey registration
   const register = useHotkeyStore(s => s.register);
@@ -87,6 +95,8 @@ export function ProjectSessionList({ sessionSortAscending }: ProjectSessionListP
     });
     return map;
   }, [sessions, sessionSortAscending]);
+
+  const normalizedSidebarSearchQuery = projectEntryState.sidebarSearchQuery.trim().toLowerCase();
 
   // Flat list of all visible sessions (for hotkey mapping)
   const allVisibleSessions = useMemo(() => {
@@ -315,6 +325,33 @@ export function ProjectSessionList({ sessionSortAscending }: ProjectSessionListP
     return map;
   }, [projects, expandedProjects, sessionsByProject]);
 
+  const filteredProjects = useMemo(() => {
+    if (!normalizedSidebarSearchQuery) {
+      return projects;
+    }
+
+    return projects.filter((project) => {
+      const projectMatches =
+        project.name.toLowerCase().includes(normalizedSidebarSearchQuery) ||
+        project.path.toLowerCase().includes(normalizedSidebarSearchQuery);
+
+      if (projectMatches) {
+        return true;
+      }
+
+      const projectSessions = sessionsByProject.get(project.id) || [];
+      return projectSessions.some((session) => {
+        const branch = session.worktreePath?.replace(/\\/g, '/').split('/').pop() || '';
+        const normalizedWorktreePath = (session.worktreePath || '').toLowerCase();
+        return (
+          (session.name || '').toLowerCase().includes(normalizedSidebarSearchQuery) ||
+          branch.toLowerCase().includes(normalizedSidebarSearchQuery) ||
+          normalizedWorktreePath.includes(normalizedSidebarSearchQuery)
+        );
+      });
+    });
+  }, [normalizedSidebarSearchQuery, projects, sessionsByProject]);
+
   return (
     <>
       <div className="flex flex-col py-1">
@@ -327,28 +364,43 @@ export function ProjectSessionList({ sessionSortAscending }: ProjectSessionListP
           className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors"
         >
           <Home className="w-4 h-4" />
-          <span>Home</span>
+          <span>{t('sidebar.home')}</span>
         </button>
 
         {/* Projects */}
-        {projects.map(project => {
-          const isExpanded = expandedProjects.has(project.id);
-          const projectSessions = sessionsByProject.get(project.id) || [];
+        {filteredProjects.map(project => {
+          const projectMatches =
+            !normalizedSidebarSearchQuery ||
+            project.name.toLowerCase().includes(normalizedSidebarSearchQuery) ||
+            project.path.toLowerCase().includes(normalizedSidebarSearchQuery);
+          const isExpanded = normalizedSidebarSearchQuery ? true : expandedProjects.has(project.id);
+          const allProjectSessions = sessionsByProject.get(project.id) || [];
+          const projectSessions = normalizedSidebarSearchQuery && !projectMatches
+            ? allProjectSessions.filter((session) => {
+                const branch = session.worktreePath?.replace(/\\/g, '/').split('/').pop() || '';
+                const normalizedWorktreePath = (session.worktreePath || '').toLowerCase();
+                return (
+                  (session.name || '').toLowerCase().includes(normalizedSidebarSearchQuery) ||
+                  branch.toLowerCase().includes(normalizedSidebarSearchQuery) ||
+                  normalizedWorktreePath.includes(normalizedSidebarSearchQuery)
+                );
+              })
+            : allProjectSessions;
 
           const projectMenuItems: DropdownItem[] = [
             {
-              id: 'settings',
-              label: 'Project Settings',
-              icon: SettingsIcon,
-              onClick: () => navigateToProject(project.id),
+              id: 'status-panel',
+              label: t('sidebar.openStatusPanel'),
+              icon: LayoutDashboard,
+              onClick: () => navigateToProjectDashboard(project.id),
             },
             {
               id: 'delete',
-              label: 'Delete Project',
+              label: t('sidebar.deleteProject'),
               icon: Trash2,
               variant: 'danger',
               onClick: () => {
-                if (confirm(`Delete project "${project.name}"? Panes will be archived.`)) {
+                if (confirm(getDeleteProjectConfirmText(project.name, t))) {
                   handleDeleteProject(project.id);
                 }
               },
@@ -362,7 +414,22 @@ export function ProjectSessionList({ sessionSortAscending }: ProjectSessionListP
           return (
             <div key={project.id} className="mt-3 first:mt-2">
               {/* Project header */}
-              <Tooltip content={<ProjectTooltipContent name={project.name} path={project.path} sessionCount={projectSessions.length} />} side="right" interactive={true}>
+              <Tooltip
+                content={
+                  <ProjectTooltipContent
+                    name={project.name}
+                    path={project.path}
+                    sessionCount={projectSessions.length}
+                    onDelete={() => {
+                      if (confirm(getDeleteProjectConfirmText(project.name, t))) {
+                        handleDeleteProject(project.id);
+                      }
+                    }}
+                  />
+                }
+                side="right"
+                interactive={true}
+              >
                 <button
                   onClick={() => toggleProject(project.id)}
                   className="w-full flex items-center justify-between px-4 py-1.5 hover:bg-surface-hover transition-colors"
@@ -384,6 +451,26 @@ export function ProjectSessionList({ sessionSortAscending }: ProjectSessionListP
 
               {isExpanded && (
                 <div className="mt-0.5">
+                  <div className="mx-4 mb-2 rounded-lg border border-border-primary bg-surface-secondary px-3 py-2">
+                    <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] text-text-tertiary">
+                      <FolderOpen className="h-3.5 w-3.5" />
+                      <span>{project.name}</span>
+                      {project.active && (
+                        <span className="rounded-full bg-interactive/10 px-2 py-0.5 text-[10px] font-medium text-interactive">
+                          {t('common.currentProject')}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 truncate text-[11px] text-text-secondary">{project.path}</p>
+                    <button
+                      onClick={() => navigateToProjectDashboard(project.id)}
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-border-secondary bg-surface-primary px-2.5 py-1.5 text-[11px] font-medium text-text-primary transition-colors hover:bg-surface-hover"
+                    >
+                      <LayoutDashboard className="h-3.5 w-3.5 text-interactive" />
+                      <span>{t('sidebar.openStatusPanel')}</span>
+                    </button>
+                  </div>
+
                   {projectSessions.length === 0 ? (
                     <div className="px-4 py-1">
                       <button
@@ -391,7 +478,7 @@ export function ProjectSessionList({ sessionSortAscending }: ProjectSessionListP
                         className="w-full flex items-center justify-center gap-2 py-2 text-xs text-text-tertiary hover:text-text-primary hover:bg-surface-hover rounded transition-colors border border-dashed border-border-primary hover:border-interactive/50"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>New workspace</span>
+                        <span>{t('sidebar.newWorkspace')}</span>
                       </button>
                     </div>
                   ) : (
@@ -425,7 +512,7 @@ export function ProjectSessionList({ sessionSortAscending }: ProjectSessionListP
                           className="flex items-center gap-1.5 py-1 px-2 rounded text-xs text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>New workspace</span>
+                          <span>{t('sidebar.newWorkspace')}</span>
                         </button>
                         <Dropdown
                           trigger={
@@ -450,12 +537,12 @@ export function ProjectSessionList({ sessionSortAscending }: ProjectSessionListP
         <div className="mt-4 px-4">
           <button
             onClick={() => setShowAddProjectDialog(true)}
-            className="w-full flex items-center justify-center gap-2 py-2 text-xs text-text-tertiary hover:text-text-primary hover:bg-surface-hover rounded transition-colors border border-dashed border-border-primary hover:border-interactive/50"
-          >
-            <FolderPlus className="w-3.5 h-3.5" />
-            <span>New repository</span>
-          </button>
-        </div>
+          className="w-full flex items-center justify-center gap-2 py-2 text-xs text-text-tertiary hover:text-text-primary hover:bg-surface-hover rounded transition-colors border border-dashed border-border-primary hover:border-interactive/50"
+        >
+          <FolderPlus className="w-3.5 h-3.5" />
+          <span>{t('sidebar.newRepository')}</span>
+        </button>
+      </div>
       </div>
 
       {/* Create Session Dialog */}
@@ -482,17 +569,43 @@ export function ProjectSessionList({ sessionSortAscending }: ProjectSessionListP
 
 // --- Tooltip content components ---
 
-function ProjectTooltipContent({ name, path, sessionCount }: { name: string; path: string; sessionCount: number }) {
+function ProjectTooltipContent({
+  name,
+  path,
+  sessionCount,
+  onDelete,
+}: {
+  name: string;
+  path: string;
+  sessionCount: number;
+  onDelete?: () => void;
+}) {
+  const { t } = useI18n();
+
   return (
-    <div className="max-w-xs space-y-1">
-      <p className="text-[11px] text-text-primary font-medium">{name}</p>
+    <div className="max-w-xs space-y-2">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 text-[11px] text-text-primary font-medium truncate">{name}</p>
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onDelete();
+            }}
+            className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-status-error/30 bg-status-error/10 px-2 py-1 text-[10px] font-medium text-status-error transition-colors hover:bg-status-error/15"
+          >
+            <Trash2 className="h-3 w-3" />
+            <span>{t('sidebar.deleteProject')}</span>
+          </button>
+        ) : null}
+      </div>
       <div className="border-t border-border-primary" />
       <div className="space-y-0.5 text-[10px]">
         <CopyableField icon={FolderOpen} value={path} mono />
       </div>
-      <p className="text-[10px] text-text-tertiary">
-        {sessionCount} {sessionCount === 1 ? 'workspace' : 'workspaces'}
-      </p>
+      <p className="text-[10px] text-text-tertiary">{getWorkspaceCountLabel(sessionCount, t)}</p>
     </div>
   );
 }
@@ -515,6 +628,7 @@ function SessionTooltipContent({ session, branch, statusText, statusColor, gs }:
   statusColor: string;
   gs: GitStatus | undefined;
 }) {
+  const { t } = useI18n();
   const createdDate = new Date(session.createdAt).toLocaleDateString(undefined, {
     weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
   });
@@ -527,7 +641,7 @@ function SessionTooltipContent({ session, branch, statusText, statusColor, gs }:
   return (
     <div className="max-w-xs space-y-1.5">
       <p className="text-[11px] text-text-primary font-medium whitespace-pre-wrap break-words leading-snug">
-        {session.name || 'Untitled'}
+        {session.name || t('common.untitled')}
       </p>
 
       <div className="border-t border-border-primary" />
@@ -618,6 +732,7 @@ function SessionRow({
   onArchive, onContinue, onStartRename,
   isEditing, editingName, onEditingNameChange, onRenameSubmit, onRenameCancel,
 }: SessionRowProps) {
+  const { t } = useI18n();
   const [localGitStatus, setLocalGitStatus] = useState<GitStatus | undefined>(session.gitStatus);
   const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -726,19 +841,19 @@ function SessionRow({
   const sessionMenuItems: DropdownItem[] = [
     {
       id: 'rename',
-      label: 'Rename',
+      label: t('sidebar.rename'),
       icon: Pencil,
       onClick: onStartRename,
     },
     {
       id: 'continue',
-      label: 'Continue',
+      label: t('sidebar.continue'),
       icon: Play,
       onClick: onContinue,
     },
     {
       id: 'archive',
-      label: 'Archive',
+      label: t('sidebar.archive'),
       icon: Archive,
       variant: 'warning',
       onClick: onArchive,
@@ -783,7 +898,7 @@ function SessionRow({
               />
             ) : (
               <span className="text-sm font-medium text-text-primary truncate flex-1 min-w-0">
-                {gs?.prTitle || session.name || 'Untitled'}
+                {gs?.prTitle || session.name || t('common.untitled')}
               </span>
             )}
             {!isEditing && hasDiff && (
@@ -839,6 +954,7 @@ function SessionRow({
 // --- Archived Sessions panel (pinned to sidebar bottom) ---
 
 export function ArchivedSessions() {
+  const { t } = useI18n();
   const [showArchived, setShowArchived] = useState(false);
   const [archivedProjects, setArchivedProjects] = useState<Array<Project & { sessions: Session[] }>>([]);
   const [expandedArchivedProjects, setExpandedArchivedProjects] = useState<Set<number>>(new Set());
@@ -908,7 +1024,7 @@ export function ArchivedSessions() {
           <ChevronRight className="w-3 h-3 flex-shrink-0" />
         )}
         <Archive className="w-3 h-3 flex-shrink-0" />
-        <span>Archived</span>
+        <span>{t('sidebar.archived')}</span>
         {hasLoadedArchived && archivedProjects.length > 0 && (
           <span className="ml-auto text-[10px] text-text-muted font-normal tabular-nums">
             {archivedProjects.reduce((sum, p) => sum + p.sessions.length, 0)}
@@ -921,11 +1037,11 @@ export function ArchivedSessions() {
           {isLoadingArchived ? (
             <div className="flex items-center gap-2 px-6 py-3 text-xs text-text-tertiary">
               <Loader2 className="w-3 h-3 animate-spin" />
-              <span>Loading...</span>
+              <span>{t('sidebar.loading')}</span>
             </div>
           ) : archivedProjects.length === 0 ? (
             <div className="px-6 py-3 text-xs text-text-tertiary">
-              No archived panes
+              {t('sidebar.noArchivedPanes')}
             </div>
           ) : (
             archivedProjects.map(project => {
@@ -953,7 +1069,7 @@ export function ArchivedSessions() {
                         <div className="flex items-center gap-2 min-w-0">
                           <Archive className="w-3 h-3 flex-shrink-0 text-text-muted" />
                           <span className="text-xs text-text-tertiary truncate">
-                            {session.name || 'Untitled'}
+                            {session.name || t('common.untitled')}
                           </span>
                         </div>
                       </button>
@@ -961,7 +1077,7 @@ export function ArchivedSessions() {
                         <button
                           onClick={(e) => { e.stopPropagation(); handleRestoreSession(session.id); }}
                           className="p-1 rounded text-text-muted hover:text-status-success hover:bg-surface-hover transition-colors"
-                          title="Restore"
+                          title={t('sidebar.restore')}
                         >
                           <ArchiveRestore className="w-3 h-3" />
                         </button>
@@ -976,7 +1092,7 @@ export function ArchivedSessions() {
                             }
                           }}
                           className="p-1 rounded text-text-muted hover:text-status-error hover:bg-surface-hover transition-colors"
-                          title="Delete permanently"
+                          title={t('sidebar.deletePermanently')}
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>

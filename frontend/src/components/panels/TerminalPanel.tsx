@@ -154,10 +154,10 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = React.memo(({ panel, 
           if (ctrlOrMeta && e.key >= '1' && e.key <= '9') return false;
           // Ctrl+Alt+1-9: switch panel tabs
           if (ctrlOrMeta && e.altKey && e.key >= '1' && e.key <= '9') return false;
-          // Ctrl/Cmd+Alt+letter: terminal shortcuts â€” only release if a matching hotkey is registered
+          // Ctrl/Cmd+Alt+letter: terminal shortcuts â€?only release if a matching hotkey is registered
           // Use e.code instead of e.key because macOS Option key modifies e.key to special chars
           // (e.g. Option+A produces e.key='Ã¥' but e.code='KeyA')
-          // Skip AltGr â€” on Windows/Linux international layouts AltGr sets both ctrlKey+altKey
+          // Skip AltGr â€?on Windows/Linux international layouts AltGr sets both ctrlKey+altKey
           // but is used for character input (e.g. AltGr+Q = '@' on German keyboards)
           if (ctrlOrMeta && e.altKey && !e.getModifierState('AltGraph') && /^Key[A-Z]$/.test(e.code)) {
             const pressed = `mod+alt+${e.code.slice(3).toLowerCase()}`;
@@ -469,7 +469,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = React.memo(({ panel, 
         const dimensions = fitAddonRef.current.proposeDimensions();
         if (dimensions) {
           window.electronAPI.invoke('terminal:resize', panel.id, dimensions.cols, dimensions.rows);
-          // If cols are suspiciously small, the reflow hasn't happened yet â€” retry
+          // If cols are suspiciously small, the reflow hasn't happened yet â€?retry
           if (dimensions.cols < 20) {
             setTimeout(fitTerminal, 150);
           } else {

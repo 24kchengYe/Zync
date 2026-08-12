@@ -25,7 +25,7 @@ export function useShortcutHintsOverlay(): { isVisible: boolean } {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
 
-      // Non-modifier key pressed â€” cancel/dismiss
+      // Non-modifier key pressed â€?cancel/dismiss
       if (!isModifierKey(e.key)) {
         cancel();
         return;

@@ -30,6 +30,8 @@ import { CloudOverlay } from './components/CloudOverlay';
 import { CloudWidget } from './components/CloudWidget';
 import { CreateSessionDialog } from './components/CreateSessionDialog';
 import { AddProjectDialog } from './components/AddProjectDialog';
+import { QuickSwitcher } from './features/quick-switcher/QuickSwitcher';
+import { useI18n } from './I18nContext';
 import { useNavigationStore } from './stores/navigationStore';
 import { initPostHog, capture, posthog } from './services/posthog';
 import type { VersionUpdateInfo, PermissionInput } from './types/session';
@@ -57,6 +59,7 @@ interface PermissionRequest {
 }
 
 function App() {
+  const { t } = useI18n();
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
   const [isAnalyticsConsentOpen, setIsAnalyticsConsentOpen] = useState(false);
@@ -69,6 +72,7 @@ function App() {
   const [hasCheckedWelcome, setHasCheckedWelcome] = useState(false);
   const [isTokenTestOpen, setIsTokenTestOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isQuickSwitcherOpen, setIsQuickSwitcherOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [resumableSessions, setResumableSessions] = useState<ResumableSession[]>([]);
   const [isResumeDialogOpen, setIsResumeDialogOpen] = useState(false);
@@ -120,6 +124,14 @@ function App() {
     keys: 'mod+k',
     category: 'navigation',
     action: () => setIsCommandPaletteOpen(true),
+  });
+
+  useHotkey({
+    id: 'open-quick-switcher',
+    label: t('quickSwitcher.shortcutLabel'),
+    keys: 'mod+j',
+    category: 'navigation',
+    action: () => setIsQuickSwitcherOpen(true),
   });
 
   useHotkey({
@@ -188,8 +200,16 @@ function App() {
   // Fetch projects for global shortcuts
   useEffect(() => {
     const fetchProjects = async () => {
-      const res = await API.projects.getAll();
-      if (res.success && res.data) setProjects(res.data);
+      if (!window.electronAPI?.projects?.getAll) {
+        return;
+      }
+
+      try {
+        const res = await API.projects.getAll();
+        if (res.success && res.data) setProjects(res.data);
+      } catch (error) {
+        console.error('[App] Failed to fetch projects for shortcuts:', error);
+      }
     };
     fetchProjects();
     const handle = () => fetchProjects();
@@ -538,6 +558,11 @@ function App() {
         <CommandPalette
           isOpen={isCommandPaletteOpen}
           onClose={() => setIsCommandPaletteOpen(false)}
+        />
+        <QuickSwitcher
+          isOpen={isQuickSwitcherOpen}
+          onClose={() => setIsQuickSwitcherOpen(false)}
+          projects={projects}
         />
         {showCreateSessionDialog && activeProject && (
           <CreateSessionDialog

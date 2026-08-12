@@ -17,18 +17,18 @@
  *
  * @example
  * // Basic forward cycling
- * cycleIndex(0, 3, 'next')  // â†’ 1
- * cycleIndex(2, 3, 'next')  // â†’ 0 (wraps around)
+ * cycleIndex(0, 3, 'next')  // â†?1
+ * cycleIndex(2, 3, 'next')  // â†?0 (wraps around)
  *
  * @example
  * // Backward cycling
- * cycleIndex(0, 3, 'prev')  // â†’ 2 (wraps around)
- * cycleIndex(2, 3, 'prev')  // â†’ 1
+ * cycleIndex(0, 3, 'prev')  // â†?2 (wraps around)
+ * cycleIndex(2, 3, 'prev')  // â†?1
  *
  * @example
  * // No current selection
- * cycleIndex(-1, 3, 'next') // â†’ 0 (starts at beginning)
- * cycleIndex(-1, 3, 'prev') // â†’ 0 (starts at beginning)
+ * cycleIndex(-1, 3, 'next') // â†?0 (starts at beginning)
+ * cycleIndex(-1, 3, 'prev') // â†?0 (starts at beginning)
  */
 export function cycleIndex(
   currentIndex: number,

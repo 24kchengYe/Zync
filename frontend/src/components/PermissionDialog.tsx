@@ -51,7 +51,7 @@ export const PermissionDialog: React.FC<PermissionDialogProps> = ({ request, onR
   const formatToolName = (toolName: string) => {
     // Remove mcp prefix if present
     if (toolName.startsWith('mcp__')) {
-      return toolName.substring(5).replace(/__/g, ' â†’ ');
+      return toolName.substring(5).replace(/__/g, ' â†?');
     }
     return toolName;
   };

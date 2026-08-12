@@ -107,9 +107,9 @@ const SetupTasksPanel: React.FC<SetupTasksPanelProps> = ({ panelId, isActive }) 
     const confirmed = window.confirm(
       'Pane will add worktree patterns to .gitignore and create a new commit.\n\n' +
       'This will:\n' +
-      'â€¢ Add /worktrees/ and /worktree-*/ patterns to .gitignore\n' +
-      'â€¢ Create a commit with only these changes\n' +
-      'â€¢ Leave any other uncommitted changes untouched\n\n' +
+      'â€?Add /worktrees/ and /worktree-*/ patterns to .gitignore\n' +
+      'â€?Create a commit with only these changes\n' +
+      'â€?Leave any other uncommitted changes untouched\n\n' +
       'Proceed?'
     );
     
