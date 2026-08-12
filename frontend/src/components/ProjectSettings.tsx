@@ -148,7 +148,7 @@ export default function ProjectSettings({ project, isOpen, onClose, onUpdate, on
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl" showCloseButton={false}>
       <ModalHeader 
-        title={t('projectSettings.title')} 
+        title={t('projectSettings.title')}
         icon={<Settings className="w-5 h-5" />}
         onClose={onClose}
       >

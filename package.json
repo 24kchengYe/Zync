@@ -118,7 +118,6 @@
       "main/dist/services/mcpPermissionBridgeStandalone.js",
       "main/dist/services/**/*.js"
     ],
-    "afterSign": "build/afterSign.js",
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "main/assets/icon.icns",
