@@ -844,6 +844,22 @@ export const PanelTabBar: React.FC<PanelTabBarProps> = memo(({
                   {hotkeyDisplay('add-tool-terminal-codex') && <Kbd size="xs" variant="muted" className="ml-auto">{hotkeyDisplay('add-tool-terminal-codex')}</Kbd>}
                 </button>
               )}
+              {/* Terminal with Copilot CLI */}
+              {availablePanelTypes.includes('terminal') && (
+                <button
+                  ref={(el) => { dropdownItemsRef.current[refIndex++] = el; }}
+                  role="menuitem"
+                  className={menuItemClass}
+                  onClick={() => handleAddPanel('terminal', {
+                    initialCommand: session?.permissionMode === 'approve' ? 'copilot' : 'copilot --allow-all-tools',
+                    title: 'Copilot CLI'
+                  })}
+                >
+                  <Terminal className="w-4 h-4 flex-shrink-0" />
+                  <span className="ml-2">Terminal (Copilot)</span>
+                  {hotkeyDisplay('add-tool-terminal-copilot') && <Kbd size="xs" variant="muted" className="ml-auto">{hotkeyDisplay('add-tool-terminal-copilot')}</Kbd>}
+                </button>
+              )}
               {/* Saved custom commands */}
               {availablePanelTypes.includes('terminal') && customCommands.map((cmd, index) => {
                 const currentRefIndex = refIndex++;
